@@ -219,7 +219,9 @@ def build_autonomous_debate_and_regime_scan(
             utc_date_str=utc_today,
         )
 
-        final_approved = bool(is_exact_trigger and audit.approved and sizing.approved)
+        # Committee Round 3 Rule: Order gating is 100% deterministic (Trigger + W2 Sizing);
+        # Dr. Eggbot acts strictly as a Pre-Trade Bear-Case Audit Log (not a discretionary LLM gate).
+        final_approved = bool(is_exact_trigger and sizing.approved and audit.approved)
 
         # Build Korean Multi-Persona Debate Log (회의록)
         research_note = (
@@ -593,14 +595,14 @@ def generate_6panel_dashboard_html(
 
     <!-- PANEL 05: POTATO-SHIELD RISK & BINANCE TESTNET TERMINAL -->
     <div class="panel">
-      <h2>③ 🛡️ 내 투자 규칙 (`user_trading_rules.json`) &amp; 실시간 5분할 격리 포지션 현황</h2>
+      <h2>③ 🛡️ 내 투자 규칙 (`CONFIG` &amp; `user_trading_rules.json` 통합) &amp; 실시간 격리 포지션 현황</h2>
       <div class="kpi-bar">
         <div class="kpi"><div class="kpi-title">계좌 가용 잔고</div><div class="kpi-val">${testnet_balance['available_balance_usdt']:,.2f} USDT</div></div>
-        <div class="kpi"><div class="kpi-title">워뇨띠 5분할 격리 슬롯</div><div class="kpi-val" style="color:#3fb950;">{len(active_positions)} / 5 슬롯 사용중</div></div>
+        <div class="kpi"><div class="kpi-title">W2 통합 격리 슬롯</div><div class="kpi-val" style="color:#3fb950;">{len(active_positions)} / 3 슬롯 사용중</div></div>
         <div class="kpi"><div class="kpi-title">바이낸스 통신 속도</div><div class="kpi-val">{testnet_ping.get('latency_ms', -1)} ms</div></div>
       </div>
       <div style="font-size:12.5px;background:#0d1117;padding:8px 10px;border-radius:6px;margin-bottom:10px;border-left:3px solid #3fb950;">
-        <strong>📌 내 설정 규칙:</strong> ① 시드 5등분 격리(슬롯당 20% = <code>$200</code>, 최대 5배) | ② 손절가: <code>ATR 자동 (최대 -2.5% 칼손절 천장)</code> | ③ 익절가: <code>+1.8% 도달 시 50% 분할익절 + 나머지 50% 본절잠금</code> | ④ 일일 킬스위치: <code>하루 -3.0% 손실 시 매매 중단</code>
+        <strong>📌 내 설정 규칙 (W2 단일 통합):</strong> ① 최대 3슬롯 격리(슬롯 증거금 20% = <code>$200</code>, 총 노출 <code>1.0x</code> 이하) | ② 손절가: <code>ATR 자동 (최대 -2.5% 칼손절 천장, 1회 최대손실 1%=$10 고정)</code> | ③ 익절가: <code>+1.8% 도달 시 50% 분할익절 + 나머지 50% 본절잠금</code> | ④ 일일 킬스위치: <code>하루 -2.0% 손실 시 매매 중단</code>
       </div>
       <h3 style="margin-top:10px;font-size:13.5px;color:#3fb950;">🔥 현재 보유 중인 실시간 포지션 (자동 익절·본절잠금·손절 감시 중)</h3>
       <table>

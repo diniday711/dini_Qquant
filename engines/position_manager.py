@@ -1,31 +1,35 @@
 """
-Wonyotti 5-Slot Isolated Position & Lifecycle Manager (`engines/position_manager.py`)
-Enforces the user's 4 core operational rules (`user_trading_rules.json`):
-1. Capital & Slot Rule: 5-Slot Isolated Margin (`20%` of capital per slot, max 5 concurrent positions)
-2. Stop-Loss Rule: Hybrid ATR Stop capped strictly at `-2.5%` max price distance (`max_stop_distance_pct = 0.025`)
-3. Take-Profit & Lifecycle Rule:
-   - At `+1.8%` (`tp1_price`), take `50%` partial profit (`TP1_50PCT_LOCKED`)
-   - Automatically move the remaining `50%` stop-loss to Break-Even (`entry_price`)
-   - Trail the remaining `50%` until trend reversal or regime flip
-4. Daily Kill Switch & Leverage Cap: `-3.0%` daily cumulative loss halts new entries; max leverage `5.0x` (Isolated)
+Unified W2 Isolated Position & Lifecycle Manager (`engines/position_manager.py`)
+Implements Round 3 Committee Synthesis:
+1. Unified Config with `CONFIG` (`config.py`):
+   - `max_concurrent_slots = 3` (matches `CONFIG.max_concurrent_positions = 3`)
+   - `daily_kill_switch_loss_pct = 0.020` (matches `CONFIG.max_daily_loss_pct = -2.0%`)
+   - `risk_per_trade_pct = 0.010` (strictly `1.0%` max loss per trade even at `-2.5%` stop ceiling)
+   - `max_gross_leverage = 1.0` (`<= 0.333x` notional per slot so 3 slots never exceed `1.0x` gross equity)
+2. Exchange-First Reconciliation (`reconcile_exchange_vs_db`):
+   - Treats Binance `positionRisk` + `openOrders` as the single Source of Truth, and SQLite as a local cache.
+   - Any mismatch between Exchange and SQLite or any position missing a `STOP_MARKET` order immediately trips `reconciliation_halted = True` (`Fail-Closed`).
 """
 import json
 from pathlib import Path
 import sqlite3
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List
+from config import CONFIG
 
 RULES_PATH = Path(__file__).parent.parent / "user_trading_rules.json"
 
 
 def load_user_trading_rules() -> Dict[str, Any]:
     default_rules = {
-        "profile_name": "Wonyotti_5Slot_Isolated_Hybrid",
-        "initial_capital_usdt": 1000.0,
+        "profile_name": "W2_Unified_Isolated_Hybrid_v3_1",
+        "initial_capital_usdt": CONFIG.initial_capital,
         "margin_mode": "ISOLATED",
-        "max_concurrent_slots": 5,
+        "max_concurrent_slots": CONFIG.max_concurrent_positions,  # 3 slots (Unified with W2)
         "slot_allocation_pct": 0.20,
-        "max_leverage": 5,
+        "risk_per_trade_pct": CONFIG.risk_per_trade_pct,          # 1.0% risk cap
+        "max_gross_leverage": 1.0,                                # <= 1.0x total gross leverage
+        "max_slot_leverage": int(CONFIG.max_gross_leverage),      # max 5x isolated slot leverage
         "stop_loss_mode": "HYBRID_ATR_CAPPED",
         "min_stop_distance_pct": 0.008,
         "max_stop_distance_pct": 0.025,
@@ -34,7 +38,7 @@ def load_user_trading_rules() -> Dict[str, Any]:
         "partial_tp_target_pct": 0.018,
         "partial_tp_ratio": 0.50,
         "max_hold_hours": 48,
-        "daily_kill_switch_loss_pct": 0.03,
+        "daily_kill_switch_loss_pct": CONFIG.max_daily_loss_pct,  # -2.0% daily kill switch (Unified with W2)
     }
     if RULES_PATH.exists():
         try:
@@ -42,6 +46,16 @@ def load_user_trading_rules() -> Dict[str, Any]:
             default_rules.update(loaded)
         except Exception:
             pass
+    # Force hard W2 invariants so user_trading_rules.json can never silently relax W2
+    default_rules["max_concurrent_slots"] = min(
+        int(default_rules["max_concurrent_slots"]), CONFIG.max_concurrent_positions
+    )
+    default_rules["daily_kill_switch_loss_pct"] = min(
+        float(default_rules["daily_kill_switch_loss_pct"]), CONFIG.max_daily_loss_pct
+    )
+    default_rules["risk_per_trade_pct"] = min(
+        float(default_rules["risk_per_trade_pct"]), CONFIG.max_risk_per_trade_cap
+    )
     return default_rules
 
 
@@ -49,6 +63,8 @@ class PositionLifecycleManager:
     def __init__(self, db_path: str = "data/crumb_memory.db"):
         self.db_path = db_path
         self.rules = load_user_trading_rules()
+        self.reconciliation_halted: bool = False
+        self.reconciliation_errors: List[str] = []
         self._init_table()
 
     def _init_table(self) -> None:
@@ -99,6 +115,51 @@ class PositionLifecycleManager:
             )
             conn.commit()
 
+    def reconcile_exchange_vs_db(self, exchange_state: Dict[str, Any]) -> Dict[str, Any]:
+        """
+        Exchange-First Reconciliation (`positionRisk` + `openOrders` is Source of Truth):
+        - If exchange reports an error, or if live exchange positions do not match SQLite `active_positions`,
+          or if any live exchange position lacks an active `STOP_MARKET` order, immediately trip
+          `self.reconciliation_halted = True` (Fail-Closed).
+        """
+        self.reconciliation_halted = False
+        self.reconciliation_errors = []
+
+        if exchange_state.get("error"):
+            self.reconciliation_halted = True
+            self.reconciliation_errors.append(f"EXCHANGE_API_ERROR: {exchange_state['error']}")
+            return {"ok": False, "errors": self.reconciliation_errors}
+
+        if not exchange_state.get("live", False):
+            return {"ok": True, "mode": "SHADOW_CACHE_OK", "errors": []}
+
+        db_positions = {p["symbol"]: p for p in self.get_active_positions()}
+        ex_positions = {
+            p["symbol"]: float(p.get("positionAmt", 0.0))
+            for p in exchange_state.get("positions", [])
+            if abs(float(p.get("positionAmt", 0.0))) > 0.0
+        }
+        open_orders = exchange_state.get("open_orders", [])
+
+        # 1. Check Symbol Set Diff between Exchange and SQLite Cache
+        if set(db_positions.keys()) != set(ex_positions.keys()):
+            self.reconciliation_halted = True
+            self.reconciliation_errors.append(
+                f"DB_EXCHANGE_POSITION_MISMATCH: Exchange={list(ex_positions.keys())} vs SQLite={list(db_positions.keys())}"
+            )
+
+        # 2. Verify every live Exchange position has an active STOP_MARKET order
+        for sym in ex_positions:
+            has_stop = any(
+                o.get("symbol") == sym and o.get("type") == "STOP_MARKET"
+                for o in open_orders
+            )
+            if not has_stop:
+                self.reconciliation_halted = True
+                self.reconciliation_errors.append(f"UNPROTECTED_POSITION_NO_STOP: {sym}")
+
+        return {"ok": not self.reconciliation_halted, "errors": self.reconciliation_errors}
+
     def compute_wonyotti_slot_order_plan(
         self,
         equity_usdt: float,
@@ -107,29 +168,33 @@ class PositionLifecycleManager:
         side_int: int,
     ) -> Dict[str, float]:
         """
-        Compute exact entry quantity, stop-loss price (ATR-based but strictly capped at -2.5%),
-        and 1st partial take-profit price (+1.8%) using Wonyotti's 1/5 (20%) Isolated Slot rule.
+        Compute exact entry quantity, stop-loss price (ATR-based capped at -2.5%),
+        and 1st partial take-profit price (+1.8%) with zero geometry conflict:
+        - Per-trade max loss is strictly `<= 1.0%` of equity (`$10` on `$1,000`)
+        - Per-slot notional is capped at `equity / max_concurrent_slots` (`33.3%` of equity)
+          so 3 concurrent slots never exceed `1.0x` gross leverage!
         """
-        slot_pct = float(self.rules["slot_allocation_pct"])  # 20% (1/5 of seed)
-        max_lev = float(self.rules["max_leverage"])  # max 5x
-        min_stop = float(self.rules["min_stop_distance_pct"])  # 0.8%
-        max_stop = float(self.rules["max_stop_distance_pct"])  # 2.5% hard ceiling!
-        atr_mult = float(self.rules["atr_stop_multiplier"])  # 2.0x ATR
-        tp1_pct = float(self.rules["partial_tp_target_pct"])  # +1.8% 1st TP
+        slot_pct = float(self.rules["slot_allocation_pct"])          # 20% ($200 isolated margin)
+        max_slots = int(self.rules["max_concurrent_slots"])          # 3 slots
+        max_gross_lev = float(self.rules.get("max_gross_leverage", 1.0))
+        min_stop = float(self.rules["min_stop_distance_pct"])        # 0.8%
+        max_stop = float(self.rules["max_stop_distance_pct"])        # 2.5% hard ceiling!
+        atr_mult = float(self.rules["atr_stop_multiplier"])          # 2.0x ATR
+        tp1_pct = float(self.rules["partial_tp_target_pct"])         # +1.8% 1st TP
+        risk_pct = float(self.rules["risk_per_trade_pct"])           # 1.0% risk per trade
 
         raw_atr_stop_pct = (atr_mult * atr_val) / max(1e-9, entry_price)
         stop_dist_pct = max(min_stop, min(max_stop, raw_atr_stop_pct))
 
-        # Slot isolated margin = 20% of equity ($200 on $1,000 seed)
         slot_margin_usd = equity_usdt * slot_pct
+        target_risk_usd = equity_usdt * risk_pct
 
-        # Risk 1.0% of total equity ($10) on this trade; cap notional at max_leverage * slot_margin_usd
-        target_risk_usd = equity_usdt * 0.010
+        # Notional from 1% risk vs per-slot gross leverage ceiling (equity * 1.0 / 3 = $333.33)
         desired_notional = target_risk_usd / stop_dist_pct
-        max_slot_notional = slot_margin_usd * max_lev
+        max_slot_notional = (equity_usdt * max_gross_lev) / max(1, max_slots)
         notional_usd = min(desired_notional, max_slot_notional)
 
-        slot_leverage = max(1.0, min(max_lev, notional_usd / max(1e-9, slot_margin_usd)))
+        slot_leverage = max(1.0, notional_usd / max(1e-9, slot_margin_usd))
         qty = notional_usd / max(1e-9, entry_price)
 
         if side_int == 1:
@@ -161,19 +226,25 @@ class PositionLifecycleManager:
         testnet_client: Any = None,
         execute_on_testnet: bool = False,
     ) -> List[str]:
-        """
-        Step 2.5 of every cycle:
-        Inspects all currently open positions and automatically:
-        - Executes 50% Partial Take-Profit if price reaches `tp1_price` (+1.8%) and locks Stop-Loss at Break-Even (`entry_price`)
-        - Executes Stop-Loss if price hits `stop_price`
-        - Executes Regime-Flip Exit if the coin's trend regime flips strongly opposite to the position
-        """
         events: List[str] = []
         now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
+
+        if testnet_client is not None:
+            ex_state = testnet_client.fetch_exchange_positions_and_orders()
+            rec = self.reconcile_exchange_vs_db(ex_state)
+            if not rec["ok"]:
+                events.append(f"🚨 [FAIL-CLOSED 거래소 대사 불일치] {'; '.join(rec['errors'])} -> 신규 주문 차단!")
+                return events
 
         with sqlite3.connect(self.db_path) as conn:
             conn.row_factory = sqlite3.Row
             rows = conn.execute("SELECT * FROM active_positions WHERE status = 'OPEN'").fetchall()
+            # Enforce W2 max_concurrent_slots invariant if legacy rows > max_slots
+            max_slots = int(self.rules["max_concurrent_slots"])
+            if len(rows) > max_slots:
+                for extra_r in rows[max_slots:]:
+                    conn.execute("DELETE FROM active_positions WHERE id = ?", (extra_r["id"],))
+                rows = rows[:max_slots]
 
             for r in rows:
                 sym = r["symbol"]
@@ -187,7 +258,6 @@ class PositionLifecycleManager:
                 init_qty = float(r["initial_qty"])
                 realized = float(r["realized_pnl_usd"])
 
-                # 1. Check Stop-Loss Hit
                 stop_triggered = (side_int == 1 and cur_px <= sp) or (side_int == -1 and cur_px >= sp)
                 if stop_triggered:
                     pnl_leg = rem_qty * side_int * (cur_px - ep)
@@ -218,7 +288,6 @@ class PositionLifecycleManager:
                     events.append(f"🛑 [{sym}] {reason} 완료 (청산가 ${cur_px:,.4f} | 확정 손익: ${total_pnl:+,.2f})")
                     continue
 
-                # 2. Check 1st Partial Take-Profit (+1.8%) -> 50% Scale-Out + Move Stop to Break-Even!
                 tp1_triggered = (not tp1_hit) and (
                     (side_int == 1 and cur_px >= tp1) or (side_int == -1 and cur_px <= tp1)
                 )
@@ -227,7 +296,6 @@ class PositionLifecycleManager:
                     new_rem_qty = init_qty - closed_qty
                     locked_profit = closed_qty * side_int * (tp1 - ep)
                     new_realized = realized + locked_profit
-                    # Move stop price to exact entry price (본절 잠금)
                     new_stop = ep
                     if testnet_client is not None:
                         testnet_client.move_stop_to_breakeven(sym, side_int, new_stop, execute_on_testnet)
@@ -243,11 +311,7 @@ class PositionLifecycleManager:
                         f"🎯 [{sym}] +1.8% 1차 목표 도달! 50% 분할익절(+${locked_profit:,.2f} 확정) 및 잔여 50% 손절가 본절(${new_stop:,.4f}) 잠금 완료!"
                     )
                     rem_qty = new_rem_qty
-                    realized = new_realized
-                    sp = new_stop
-                    tp1_hit = 1
 
-                # 3. Update Unrealized PnL
                 unreal = rem_qty * side_int * (cur_px - ep)
                 conn.execute(
                     "UPDATE active_positions SET unrealized_pnl_usd = ?, updated_at = ? WHERE symbol = ?",
@@ -266,7 +330,8 @@ class PositionLifecycleManager:
         plan: Dict[str, float],
         entry_price: float,
     ) -> bool:
-        """Record a newly opened position into the 5-Slot Isolated tracker if a slot is available."""
+        if self.reconciliation_halted:
+            return False
         now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
         max_slots = int(self.rules["max_concurrent_slots"])
         with sqlite3.connect(self.db_path) as conn:

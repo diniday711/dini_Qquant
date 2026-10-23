@@ -215,6 +215,42 @@ class TestW2AndLeakageGates(unittest.TestCase):
         self.assertTrue(callable(bt.simulate_single_trade_execution))
         self.assertEqual(len(self.cfg.config_hash()), 16)
 
+    def test_7_round3_unified_config_idempotency_and_reconciliation(self):
+        """
+        Verify Round 3 Committee Requirements:
+        1) Unified Config between CONFIG and PositionLifecycleManager (3 slots, -2% daily kill, <=1% loss per trade, <=1.0x gross)
+        2) Deterministic idempotent clientOrderId (`QSTACK_{trade_id}_{leg}`) & precision rounding
+        3) Exchange-First Reconciliation Fail-Closed on DB/Exchange diff or missing STOP_MARKET order
+        """
+        from engines.position_manager import PositionLifecycleManager
+        from engines.binance_testnet_client import build_idempotent_client_order_id, round_symbol_qty
+
+        pm = PositionLifecycleManager(":memory:")
+        self.assertEqual(int(pm.rules["max_concurrent_slots"]), self.cfg.max_concurrent_positions)
+        self.assertAlmostEqual(float(pm.rules["daily_kill_switch_loss_pct"]), self.cfg.max_daily_loss_pct)
+
+        # Even when ATR demands -2.5% stop distance ceiling, max loss <= $10 (1.0% of $1,000) and slot notional <= $333.34 (1/3 gross)
+        plan = pm.compute_wonyotti_slot_order_plan(1000.0, 100.0, 2.0, 1)
+        self.assertLessEqual(plan["max_loss_usd"], 10.0001)
+        self.assertLessEqual(plan["notional_usd"], 333.34)
+
+        # Idempotent clientOrderId & lotSize rounding
+        cid_sl = build_idempotent_client_order_id("LTC_20261023_01", "sl")
+        self.assertEqual(cid_sl, "QSTACK_LTC_20261023_01_SL")
+        self.assertEqual(round_symbol_qty("DOGEUSDT", 123.789), 123.0)
+
+        # Exchange-vs-DB Reconciliation Fail-Closed check
+        fake_ex_state = {
+            "live": True,
+            "positions": [{"symbol": "ETHUSDT", "positionAmt": "1.5"}],
+            "open_orders": [],  # Missing STOP_MARKET order AND missing in local DB!
+            "error": None,
+        }
+        rec = pm.reconcile_exchange_vs_db(fake_ex_state)
+        self.assertFalse(rec["ok"])
+        self.assertTrue(pm.reconciliation_halted)
+        self.assertIn("UNPROTECTED_POSITION_NO_STOP: ETHUSDT", rec["errors"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
