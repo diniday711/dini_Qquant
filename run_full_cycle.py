@@ -370,6 +370,16 @@ def write_hermes_discord_briefing(
     os.makedirs(os.path.dirname(output_md_path), exist_ok=True)
     with open(output_md_path, "w", encoding="utf-8") as f:
         f.write(content)
+
+    webhook_url = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+    if webhook_url:
+        try:
+            import requests
+            requests.post(webhook_url, json={"content": content[:1950]}, timeout=5)
+            print("  -> Sent Discord briefing automatically via DISCORD_WEBHOOK_URL!")
+        except Exception as e:
+            print(f"  -> Discord webhook warning: {e}")
+
     return content
 
 
@@ -475,88 +485,89 @@ def generate_6panel_dashboard_html(
         </tr>
         """
 
+    approved_list = [s for s in regime_scan["actionable_signals"] if s["eggbot_approved"]]
+    if approved_list:
+        top_act = approved_list[0]
+        easy_headline = (
+            f"🟢 [진입 승인 & 주문 실행] 지금 봇이 <strong>{top_act['symbol']} ({top_act['side']} / 하락베팅)</strong> 타점을 포착해 "
+            f"안전 수량(<strong>${top_act['notional_usd']:,.2f} USDT, 레버리지 {top_act['leverage']:.2f}배</strong>)으로 주문을 넣었습니다! "
+            f"(자동 손절가: <code>${top_act['stop_price']:,.4f}</code> — 틀려도 내 시드의 1%인 $10만 잃도록 잠금 완료)"
+        )
+        headline_bg = "#1c2d24"
+        headline_border = "#3fb950"
+    else:
+        easy_headline = (
+            "🟡 [현금 관망 중] 지금 시장은 조건이 완벽하지 않아 봇이 내 돈을 지키며 100% 현금으로 대기하고 있습니다. "
+            "(억지로 매매하지 않고 확실한 타점만 기다리는 중)"
+        )
+        headline_bg = "#262115"
+        headline_border = "#d29922"
+
     html = f"""<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="refresh" content="300">
-<title>Q-Stack 6-Panel AI Quant Workstation (Suki Dashboard)</title>
+<title>Q-Stack 24시간 자율 AI 퀀트 본부 (한글 대시보드)</title>
 <style>
-  body {{ background:#090d16; color:#c9d1d9; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",monospace; margin:20px; line-height:1.45; }}
+  body {{ background:#090d16; color:#c9d1d9; font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic","Segoe UI",sans-serif; margin:20px; line-height:1.5; }}
   h1, h2, h3 {{ color:#f0f6fc; margin:0 0 10px 0; }}
   .grid {{ display:grid; grid-template-columns:1.25fr 0.75fr; gap:16px; margin-bottom:16px; }}
   .panel {{ background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; }}
   .panel-full {{ grid-column:1 / -1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; margin-bottom:16px; }}
-  table {{ width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px; }}
-  th, td {{ border:1px solid #30363d; padding:7px 9px; text-align:left; }}
+  table {{ width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }}
+  th, td {{ border:1px solid #30363d; padding:8px 10px; text-align:left; }}
   th {{ background:#21262d; color:#58a6ff; }}
   .kpi-bar {{ display:flex; gap:14px; flex-wrap:wrap; margin-bottom:12px; }}
   .kpi {{ background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:10px 14px; flex:1; min-width:150px; }}
-  .kpi-title {{ font-size:11px; color:#8b949e; text-transform:uppercase; }}
+  .kpi-title {{ font-size:12px; color:#8b949e; }}
   .kpi-val {{ font-size:18px; font-weight:bold; color:#f0f6fc; margin-top:4px; }}
 </style>
 </head>
 <body>
-  <h1>🏛️ Q-Stack: 1-Person 24/7 AI Quant Desk &amp; Regime Switcher (6-Panel Terminal)</h1>
-  <p style="color:#8b949e;margin-top:0;">Last Updated: <code>{now_str}</code> | Config SHA-256: <code>{CONFIG.config_hash()}</code> | Hermes Discord Briefing: <code>reports/latest_discord_briefing.md</code></p>
+  <h1>🏛️ Q-Stack: 나만의 24시간 자율 AI 퀀트 연구소 &amp; 자동매매 본부</h1>
+  <p style="color:#8b949e;margin-top:0;">최근 자동 업데이트: <code>{now_str}</code> | 설정 무결성 해시: <code>{CONFIG.config_hash()}</code> | 디스코드 브리핑 파일: <code>reports/latest_discord_briefing.md</code></p>
+
+  <!-- 초보자용 3초 요약 신호등 -->
+  <div style="background:{headline_bg};border:2px solid {headline_border};border-radius:8px;padding:16px;margin-bottom:16px;font-size:15px;color:#f0f6fc;">
+    <div style="font-size:13px;color:#8b949e;margin-bottom:4px;">🚦 <strong>초보자용 3초 한눈에 보기 (지금 봇이 무슨 일을 했나요?)</strong></div>
+    {easy_headline}
+  </div>
 
   <!-- PANEL 01: MARKET & 3-AXIS REGIME OVERVIEW -->
   <div class="panel-full">
-    <h2>PANEL 01 — 🌤️ 3-Axis Market Regime Radar (audit_bot.xml: Trend × Volatility × Breadth)</h2>
+    <h2>① 🌤️ 지금 코인 시장 날씨는 어떤가요? (1번 장세 판독기)</h2>
     <div class="kpi-bar">
-      <div class="kpi"><div class="kpi-title">Dominant Trend</div><div class="kpi-val" style="color:#58a6ff;">{regime_scan['dominant_trend_regime']}</div></div>
-      <div class="kpi"><div class="kpi-title">Volatility State</div><div class="kpi-val" style="color:#f0883e;">{regime_scan['volatility_state']}</div></div>
-      <div class="kpi"><div class="kpi-title">Risk Appetite</div><div class="kpi-val" style="color:#3fb950;">{regime_scan['risk_appetite']}</div></div>
-      <div class="kpi"><div class="kpi-title">Market Breadth (&gt;200 MA)</div><div class="kpi-val">{regime_scan['market_breadth_pct']:.0%} (BTC 24h: {regime_scan['btc_24h_return_pct']:+.2%})</div></div>
-      <div class="kpi"><div class="kpi-title">Active Strategy Mode</div><div class="kpi-val" style="color:#a371f7;">{regime_scan['active_strategy_mode']}</div></div>
+      <div class="kpi"><div class="kpi-title">현재 시장 큰 흐름 (추세)</div><div class="kpi-val" style="color:#58a6ff;">{regime_scan['dominant_trend_regime']}</div></div>
+      <div class="kpi"><div class="kpi-title">가격 출렁임 정도 (변동성)</div><div class="kpi-val" style="color:#f0883e;">{regime_scan['volatility_state']}</div></div>
+      <div class="kpi"><div class="kpi-title">공격/방어 모드</div><div class="kpi-val" style="color:#3fb950;">{regime_scan['risk_appetite']}</div></div>
+      <div class="kpi"><div class="kpi-title">상승 중인 코인 비율 (시장 폭)</div><div class="kpi-val">{regime_scan['market_breadth_pct']:.0%} (비트코인 24h: {regime_scan['btc_24h_return_pct']:+.2%})</div></div>
+      <div class="kpi"><div class="kpi-title">봇이 자동 선택한 전략 무기</div><div class="kpi-val" style="color:#a371f7;">{regime_scan['active_strategy_mode']}</div></div>
     </div>
-    <div style="font-size:12.5px;background:#0d1117;padding:10px;border-radius:6px;border-left:4px solid #a371f7;">
-      <strong>🔍 Final Check — WHAT COULD I BE WRONG ABOUT?:</strong> {regime_scan['what_could_be_wrong']}
+    <div style="font-size:13px;background:#0d1117;padding:10px;border-radius:6px;border-left:4px solid #a371f7;">
+      <strong>🔍 비판 봇의 리스크 경고 (우리가 뭘 조심해야 하나요?):</strong> {regime_scan['what_could_be_wrong']}
     </div>
-  </div>
-
-  <!-- PANEL 02: 10-COIN LIQUIDITY, RESIDUAL & REGIME MAP -->
-  <div class="panel-full">
-    <h2>PANEL 02 — 🗺️ 10-Coin Universe Regime &amp; Strategy Fit Map (Hatcha Intelligence)</h2>
-    <table>
-      <tr>
-        <th>Symbol</th>
-        <th>Price</th>
-        <th>24h Return</th>
-        <th>Rel Strength vs BTC</th>
-        <th>Trend Axis</th>
-        <th>Volatility Axis (Rank)</th>
-        <th>ADX / RSI</th>
-        <th>Candle Delta</th>
-        <th>8h Funding</th>
-        <th>Mapped Strategy Fit (Conf)</th>
-      </tr>
-      {coin_rows_html}
-    </table>
   </div>
 
   <div class="grid">
     <!-- PANEL 03: AUTONOMOUS DEBATE LOG & SIGNAL MONITOR -->
     <div class="panel">
-      <h2>PANEL 03 — ⚖️ 24/7 Autonomous Committee Debate Log (회의록: 리서치 vs 찬성 vs 비판 → 심판 결정)</h2>
+      <h2>② ⚖️ AI 위원회 찬반 회의록 &amp; 24시간 자동 투자 결정 (왜 샀고 왜 안 샀나요?)</h2>
       {signals_html}
     </div>
 
     <!-- PANEL 05: POTATO-SHIELD RISK & BINANCE TESTNET TERMINAL -->
     <div class="panel">
-      <h2>PANEL 05 — 🛡️ Potato-Shield Risk &amp; Binance Testnet Terminal</h2>
+      <h2>③ 🛡️ 내 돈 지킴이 안전벨트 (W2 방패) &amp; 바이낸스 계좌 상태</h2>
       <div class="kpi-bar">
-        <div class="kpi"><div class="kpi-title">Execution Mode</div><div class="kpi-val" style="font-size:13px;color:#58a6ff;">{testnet_balance['mode']}</div></div>
-        <div class="kpi"><div class="kpi-title">Testnet Balance</div><div class="kpi-val">${testnet_balance['available_balance_usdt']:,.2f} USDT</div></div>
-        <div class="kpi"><div class="kpi-title">Testnet Ping</div><div class="kpi-val">{testnet_ping.get('latency_ms', -1)} ms</div></div>
+        <div class="kpi"><div class="kpi-title">현재 계좌 연결 모드</div><div class="kpi-val" style="font-size:13px;color:#58a6ff;">{testnet_balance['mode']}</div></div>
+        <div class="kpi"><div class="kpi-title">계좌 가용 잔고</div><div class="kpi-val">${testnet_balance['available_balance_usdt']:,.2f} USDT</div></div>
+        <div class="kpi"><div class="kpi-title">바이낸스 서버 통신 속도</div><div class="kpi-val">{testnet_ping.get('latency_ms', -1)} ms</div></div>
       </div>
-      <p style="font-size:12.5px;margin:6px 0;"><strong>Hard Risk Constitution (W2 Verified):</strong> Per-Trade Cap = <code>1.0% (Max 1.5%)</code> | Daily Kill Switch = <code>-2.0%</code> | Max Gross Leverage = <code>5.0x</code></p>
-      <ul style="font-size:12px;color:#3fb950;margin:6px 0;padding-left:18px;">
-        {"".join(f"<li><code>{d}</code></li>" for d in w2_details)}
-      </ul>
-      <h3 style="margin-top:14px;font-size:13px;">Recent Autonomous Decision &amp; Order Audit Ledger</h3>
+      <p style="font-size:13px;margin:6px 0;"><strong>절대 깨지지 않는 안전 규칙 (코드 강제):</strong> 1회 최대 손실 = <code>내 시드의 1.0% ($10)</code> | 하루 손실 한도(킬스위치) = <code>-2.0% ($20)</code> | 최대 레버리지 상한 = <code>5.0배</code></p>
+      <h3 style="margin-top:14px;font-size:14px;">📋 최근 봇이 결정한 주문 내역 (자동 장부)</h3>
       <table>
-        <tr><th>Time</th><th>Symbol</th><th>Strat</th><th>Entry</th><th>Stop</th><th>Size</th><th>Verdict</th><th>Order</th></tr>
+        <tr><th>시간</th><th>코인 (방향)</th><th>사용한 무기</th><th>진입가</th><th>자동 손절가</th><th>투입 금액 (배율)</th><th>심판 판정</th><th>주문 상태</th></tr>
         {trade_rows_html}
       </table>
     </div>
@@ -564,35 +575,55 @@ def generate_6panel_dashboard_html(
 
   <!-- PANEL 04: STRATEGY LAB & W1 REJECTION MACHINE -->
   <div class="panel-full">
-    <h2>PANEL 04 — 🔬 Strategy Lab: Single Strategy vs. 3-Axis Regime Switcher (360-Day Real Binance Proof)</h2>
+    <h2>④ 🏆 전략 연구소 성적표: 지난 1년(360일) 동안 어떤 전략이 돈을 제일 잘 벌었나요? (수수료·슬리피지 모두 차감 후 실제 순수익)</h2>
     <table>
       <tr>
-        <th>Strategy Mode (360 Days, 10 Coins, Full Fees+Slippage+Funding)</th>
-        <th>Trades</th>
-        <th>Gross PnL</th>
-        <th>Total Cost</th>
-        <th>Net PnL (After Cost)</th>
-        <th>Gross/Cost Ratio</th>
-        <th>Win Rate</th>
-        <th>Max Drawdown</th>
+        <th>전략 운용 모드 (초기 자금 $1,000 기준, 360일 실데이터)</th>
+        <th>총 매매 횟수</th>
+        <th>수수료 빼기 전 수익</th>
+        <th>총 수수료·슬리피지 비용</th>
+        <th>💎 최종 순수익 (내 주머니에 남는 돈)</th>
+        <th>비용 대비 수익 배수</th>
+        <th>승률</th>
+        <th>최대 계좌 낙폭 (MDD)</th>
       </tr>
       {strat_rows_html}
     </table>
   </div>
 
-  <!-- PANEL 06: CRUMB PERSISTENT SQLITE RESEARCH JOURNAL -->
+  <!-- PANEL 02: 10-COIN LIQUIDITY, RESIDUAL & REGIME MAP -->
   <div class="panel-full">
-    <h2>PANEL 06 — 🍞 Crumb SQLite Institutional Memory (`data/crumb_memory.db` Experiment History)</h2>
+    <h2>⑤ 🗺️ 10개 메이저 코인 실시간 정밀 스캔 표 (참고용 세부 지표)</h2>
     <table>
       <tr>
-        <th>Recorded At</th>
-        <th>Strategy Name</th>
-        <th>Config SHA-256</th>
-        <th>Trades</th>
-        <th>Gross PnL</th>
-        <th>Total Cost</th>
-        <th>Net PnL</th>
-        <th>Verdict</th>
+        <th>코인명</th>
+        <th>현재 가격</th>
+        <th>24시간 등락률</th>
+        <th>비트코인 대비 강도(사토시)</th>
+        <th>추세 상태</th>
+        <th>변동성 상태</th>
+        <th>추세강도(ADX) / 과열도(RSI)</th>
+        <th>매수·매도 수급(Delta)</th>
+        <th>8시간 펀딩비</th>
+        <th>봇이 배정한 무기 (신뢰도)</th>
+      </tr>
+      {coin_rows_html}
+    </table>
+  </div>
+
+  <!-- PANEL 06: CRUMB PERSISTENT SQLITE RESEARCH JOURNAL -->
+  <div class="panel-full">
+    <h2>⑥ 🍞 과거 연구 실험 기록 보관소 (`data/crumb_memory.db` — 실패한 전략을 다시 쓰지 않기 위한 기억 장치)</h2>
+    <table>
+      <tr>
+        <th>기록 시각</th>
+        <th>실험한 전략 이름</th>
+        <th>설정 해시</th>
+        <th>거래 수</th>
+        <th>세전 수익</th>
+        <th>총 비용</th>
+        <th>최종 순수익</th>
+        <th>합격/폐기 판정</th>
       </tr>
       {exp_rows_html}
     </table>

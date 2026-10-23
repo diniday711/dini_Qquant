@@ -3,56 +3,276 @@
 <head>
 <meta charset="UTF-8">
 <meta http-equiv="refresh" content="300">
-<title>Q-Stack 6-Panel AI Quant Workstation (Suki Dashboard)</title>
+<title>Q-Stack 24시간 자율 AI 퀀트 본부 (한글 대시보드)</title>
 <style>
-  body { background:#090d16; color:#c9d1d9; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",monospace; margin:20px; line-height:1.45; }
+  body { background:#090d16; color:#c9d1d9; font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic","Segoe UI",sans-serif; margin:20px; line-height:1.5; }
   h1, h2, h3 { color:#f0f6fc; margin:0 0 10px 0; }
   .grid { display:grid; grid-template-columns:1.25fr 0.75fr; gap:16px; margin-bottom:16px; }
   .panel { background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; }
   .panel-full { grid-column:1 / -1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; margin-bottom:16px; }
-  table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px; }
-  th, td { border:1px solid #30363d; padding:7px 9px; text-align:left; }
+  table { width:100%; border-collapse:collapse; font-size:13px; margin-top:8px; }
+  th, td { border:1px solid #30363d; padding:8px 10px; text-align:left; }
   th { background:#21262d; color:#58a6ff; }
   .kpi-bar { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:12px; }
   .kpi { background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:10px 14px; flex:1; min-width:150px; }
-  .kpi-title { font-size:11px; color:#8b949e; text-transform:uppercase; }
+  .kpi-title { font-size:12px; color:#8b949e; }
   .kpi-val { font-size:18px; font-weight:bold; color:#f0f6fc; margin-top:4px; }
 </style>
 </head>
 <body>
-  <h1>🏛️ Q-Stack: 1-Person 24/7 AI Quant Desk &amp; Regime Switcher (6-Panel Terminal)</h1>
-  <p style="color:#8b949e;margin-top:0;">Last Updated: <code>2026-10-23 05:49:48 UTC</code> | Config SHA-256: <code>925b154685393ef3</code> | Hermes Discord Briefing: <code>reports/latest_discord_briefing.md</code></p>
+  <h1>🏛️ Q-Stack: 나만의 24시간 자율 AI 퀀트 연구소 &amp; 자동매매 본부</h1>
+  <p style="color:#8b949e;margin-top:0;">최근 자동 업데이트: <code>2026-10-23 05:56:23 UTC</code> | 설정 무결성 해시: <code>925b154685393ef3</code> | 디스코드 브리핑 파일: <code>reports/latest_discord_briefing.md</code></p>
+
+  <!-- 초보자용 3초 요약 신호등 -->
+  <div style="background:#1c2d24;border:2px solid #3fb950;border-radius:8px;padding:16px;margin-bottom:16px;font-size:15px;color:#f0f6fc;">
+    <div style="font-size:13px;color:#8b949e;margin-bottom:4px;">🚦 <strong>초보자용 3초 한눈에 보기 (지금 봇이 무슨 일을 했나요?)</strong></div>
+    🟢 [진입 승인 & 주문 실행] 지금 봇이 <strong>LTCUSDT (SHORT / 하락베팅)</strong> 타점을 포착해 안전 수량(<strong>$456.83 USDT, 레버리지 0.46배</strong>)으로 주문을 넣었습니다! (자동 손절가: <code>$60.4906</code> — 틀려도 내 시드의 1%인 $10만 잃도록 잠금 완료)
+  </div>
 
   <!-- PANEL 01: MARKET & 3-AXIS REGIME OVERVIEW -->
   <div class="panel-full">
-    <h2>PANEL 01 — 🌤️ 3-Axis Market Regime Radar (audit_bot.xml: Trend × Volatility × Breadth)</h2>
+    <h2>① 🌤️ 지금 코인 시장 날씨는 어떤가요? (1번 장세 판독기)</h2>
     <div class="kpi-bar">
-      <div class="kpi"><div class="kpi-title">Dominant Trend</div><div class="kpi-val" style="color:#58a6ff;">TRENDING_DOWN</div></div>
-      <div class="kpi"><div class="kpi-title">Volatility State</div><div class="kpi-val" style="color:#f0883e;">NORMAL / COMPRESSED</div></div>
-      <div class="kpi"><div class="kpi-title">Risk Appetite</div><div class="kpi-val" style="color:#3fb950;">RISK_OFF</div></div>
-      <div class="kpi"><div class="kpi-title">Market Breadth (&gt;200 MA)</div><div class="kpi-val">30% (BTC 24h: -1.24%)</div></div>
-      <div class="kpi"><div class="kpi-title">Active Strategy Mode</div><div class="kpi-val" style="color:#a371f7;">TREND_BREAKOUT_SHORT</div></div>
+      <div class="kpi"><div class="kpi-title">현재 시장 큰 흐름 (추세)</div><div class="kpi-val" style="color:#58a6ff;">TRENDING_DOWN</div></div>
+      <div class="kpi"><div class="kpi-title">가격 출렁임 정도 (변동성)</div><div class="kpi-val" style="color:#f0883e;">NORMAL / COMPRESSED</div></div>
+      <div class="kpi"><div class="kpi-title">공격/방어 모드</div><div class="kpi-val" style="color:#3fb950;">RISK_OFF</div></div>
+      <div class="kpi"><div class="kpi-title">상승 중인 코인 비율 (시장 폭)</div><div class="kpi-val">30% (비트코인 24h: -1.24%)</div></div>
+      <div class="kpi"><div class="kpi-title">봇이 자동 선택한 전략 무기</div><div class="kpi-val" style="color:#a371f7;">TREND_BREAKOUT_SHORT</div></div>
     </div>
-    <div style="font-size:12.5px;background:#0d1117;padding:10px;border-radius:6px;border-left:4px solid #a371f7;">
-      <strong>🔍 Final Check — WHAT COULD I BE WRONG ABOUT?:</strong> 현재 200시간선 위 코인 비율(시장 폭)은 30%, BTC 24시간 수익률은 -1.24%입니다. 만약 거시 지표 발표나 거래소 연쇄 청산이 발생하면 모든 알트코인 상관계수가 1로 수렴할 수 있으므로, Potato-Shield가 강제하는 1회 손실 캡(1.0%)과 일일 킬스위치(-2.0%)를 절대 해제하지 마십시오.
+    <div style="font-size:13px;background:#0d1117;padding:10px;border-radius:6px;border-left:4px solid #a371f7;">
+      <strong>🔍 비판 봇의 리스크 경고 (우리가 뭘 조심해야 하나요?):</strong> 현재 200시간선 위 코인 비율(시장 폭)은 30%, BTC 24시간 수익률은 -1.24%입니다. 만약 거시 지표 발표나 거래소 연쇄 청산이 발생하면 모든 알트코인 상관계수가 1로 수렴할 수 있으므로, Potato-Shield가 강제하는 1회 손실 캡(1.0%)과 일일 킬스위치(-2.0%)를 절대 해제하지 마십시오.
     </div>
+  </div>
+
+  <div class="grid">
+    <!-- PANEL 03: AUTONOMOUS DEBATE LOG & SIGNAL MONITOR -->
+    <div class="panel">
+      <h2>② ⚖️ AI 위원회 찬반 회의록 &amp; 24시간 자동 투자 결정 (왜 샀고 왜 안 샀나요?)</h2>
+      
+        <div style="border:1px solid #30363d;border-left:4px solid #238636;padding:10px;margin-bottom:8px;border-radius:4px;background:#0d1117;">
+          <div style="font-size:13px;"><strong>LTCUSDT [SHORT 검토]</strong> | 배정: <code>TREND_BREAKOUT_SHORT</code> | 진입가: <code>$59.3400</code> | 손절가: <code>$60.4906</code> | 사이징: <code>$456.83 (0.46x)</code></div>
+          <div style="font-size:12px;color:#c9d1d9;margin-top:4px;">[리서치 봇 Hatcha] LTCUSDT 현재가 $59.3400 (24h -2.18%, BTC 대비 상대강도 -0.94%). 장세=TRENDING_DOWN/NORMAL, ADX=56.1, RSI=50, 수급 Delta=-0.24, 펀딩비=-0.0043%.</div>
+          <div style="font-size:12px;color:#3fb950;margin-top:2px;">[찬성 봇 Bull/Trend] 현재 배정 전략은 `TREND_BREAKOUT_SHORT`입니다. SHORT 방향 진입 시 손절폭 1.94%($60.4906), 비용 대비 기대수익비 30.5배로 손익비가 우수합니다.</div>
+          <div style="font-size:12px;color:#f0883e;margin-top:2px;">[비판 봇 Dr.Eggbot] 반론 점검: No fatal cross-asset or funding contradictions detected; standard stop-loss applies. | 돌파/밴드 타점 도달 완료!</div>
+          <div style="font-size:12.5px;color:#58a6ff;font-weight:bold;margin-top:4px;">✅ [최종 승인 - 즉시 주문 집행] 타점 도달 및 리스크 감사 통과! 456.83 USDT (0.46x) 주문 전송.</div>
+        </div>
+        
+        <div style="border:1px solid #30363d;border-left:4px solid #8b949e;padding:10px;margin-bottom:8px;border-radius:4px;background:#0d1117;">
+          <div style="font-size:13px;"><strong>ADAUSDT [SHORT 검토]</strong> | 배정: <code>TREND_BREAKOUT_SHORT</code> | 진입가: <code>$0.2159</code> | 손절가: <code>$0.2209</code> | 사이징: <code>$391.71 (0.39x)</code></div>
+          <div style="font-size:12px;color:#c9d1d9;margin-top:4px;">[리서치 봇 Hatcha] ADAUSDT 현재가 $0.2159 (24h -2.04%, BTC 대비 상대강도 -0.81%). 장세=TRENDING_DOWN/NORMAL, ADX=56.6, RSI=46, 수급 Delta=+0.14, 펀딩비=-0.0090%.</div>
+          <div style="font-size:12px;color:#3fb950;margin-top:2px;">[찬성 봇 Bull/Trend] 현재 배정 전략은 `TREND_BREAKOUT_SHORT`입니다. SHORT 방향 진입 시 손절폭 2.30%($0.2209), 비용 대비 기대수익비 36.2배로 손익비가 우수합니다.</div>
+          <div style="font-size:12px;color:#f0883e;margin-top:2px;">[비판 봇 Dr.Eggbot] 반론 점검: No fatal cross-asset or funding contradictions detected; standard stop-loss applies. | 아직 48h 돌파선/밴드 상하단 타점에 완전히 닿지 않음(대기 필요).</div>
+          <div style="font-size:12.5px;color:#58a6ff;font-weight:bold;margin-top:4px;">⏸️ [관망/기각 (ABSTAIN)] 타점 미도달(대기) 사유로 진입 보류.</div>
+        </div>
+        
+        <div style="border:1px solid #30363d;border-left:4px solid #8b949e;padding:10px;margin-bottom:8px;border-radius:4px;background:#0d1117;">
+          <div style="font-size:13px;"><strong>AVAXUSDT [LONG 검토]</strong> | 배정: <code>TREND_BREAKOUT_SHORT</code> | 진입가: <code>$9.2570</code> | 손절가: <code>$9.0754</code> | 사이징: <code>$452.11 (0.45x)</code></div>
+          <div style="font-size:12px;color:#c9d1d9;margin-top:4px;">[리서치 봇 Hatcha] AVAXUSDT 현재가 $9.2570 (24h -1.16%, BTC 대비 상대강도 +0.07%). 장세=TRENDING_DOWN/COMPRESSED, ADX=54.8, RSI=53, 수급 Delta=-0.05, 펀딩비=-0.0049%.</div>
+          <div style="font-size:12px;color:#3fb950;margin-top:2px;">[찬성 봇 Bull/Trend] 현재 배정 전략은 `TREND_BREAKOUT_SHORT`입니다. LONG 방향 진입 시 손절폭 1.96%($9.0754), 비용 대비 기대수익비 30.8배로 손익비가 우수합니다.</div>
+          <div style="font-size:12px;color:#f0883e;margin-top:2px;">[비판 봇 Dr.Eggbot] 반론 점검: BREADTH_DIVERGENCE: Attempting LONG breakout while only 30% of universe is above 200-MA. | 아직 48h 돌파선/밴드 상하단 타점에 완전히 닿지 않음(대기 필요).</div>
+          <div style="font-size:12.5px;color:#58a6ff;font-weight:bold;margin-top:4px;">⏸️ [관망/기각 (ABSTAIN)] 타점 미도달(대기) 사유로 진입 보류.</div>
+        </div>
+        
+        <div style="border:1px solid #30363d;border-left:4px solid #8b949e;padding:10px;margin-bottom:8px;border-radius:4px;background:#0d1117;">
+          <div style="font-size:13px;"><strong>SUIUSDT [SHORT 검토]</strong> | 배정: <code>TREND_BREAKOUT_SHORT</code> | 진입가: <code>$0.9924</code> | 손절가: <code>$1.0138</code> | 사이징: <code>$415.84 (0.42x)</code></div>
+          <div style="font-size:12px;color:#c9d1d9;margin-top:4px;">[리서치 봇 Hatcha] SUIUSDT 현재가 $0.9924 (24h -1.30%, BTC 대비 상대강도 -0.07%). 장세=TRENDING_DOWN/COMPRESSED, ADX=53.8, RSI=55, 수급 Delta=-0.06, 펀딩비=-0.0024%.</div>
+          <div style="font-size:12px;color:#3fb950;margin-top:2px;">[찬성 봇 Bull/Trend] 현재 배정 전략은 `TREND_BREAKOUT_SHORT`입니다. SHORT 방향 진입 시 손절폭 2.15%($1.0138), 비용 대비 기대수익비 33.9배로 손익비가 우수합니다.</div>
+          <div style="font-size:12px;color:#f0883e;margin-top:2px;">[비판 봇 Dr.Eggbot] 반론 점검: No fatal cross-asset or funding contradictions detected; standard stop-loss applies. | 아직 48h 돌파선/밴드 상하단 타점에 완전히 닿지 않음(대기 필요).</div>
+          <div style="font-size:12.5px;color:#58a6ff;font-weight:bold;margin-top:4px;">⏸️ [관망/기각 (ABSTAIN)] 타점 미도달(대기) 사유로 진입 보류.</div>
+        </div>
+        
+        <div style="border:1px solid #30363d;border-left:4px solid #8b949e;padding:10px;margin-bottom:8px;border-radius:4px;background:#0d1117;">
+          <div style="font-size:13px;"><strong>BNBUSDT [LONG 검토]</strong> | 배정: <code>TREND_BREAKOUT_SHORT</code> | 진입가: <code>$740.2900</code> | 손절가: <code>$729.1857</code> | 사이징: <code>$571.43 (0.57x)</code></div>
+          <div style="font-size:12px;color:#c9d1d9;margin-top:4px;">[리서치 봇 Hatcha] BNBUSDT 현재가 $740.2900 (24h -0.24%, BTC 대비 상대강도 +0.99%). 장세=TRENDING_DOWN/EXPANDING, ADX=48.7, RSI=64, 수급 Delta=-0.10, 펀딩비=0.0000%.</div>
+          <div style="font-size:12px;color:#3fb950;margin-top:2px;">[찬성 봇 Bull/Trend] 현재 배정 전략은 `TREND_BREAKOUT_SHORT`입니다. LONG 방향 진입 시 손절폭 1.50%($729.1857), 비용 대비 기대수익비 23.6배로 손익비가 우수합니다.</div>
+          <div style="font-size:12px;color:#f0883e;margin-top:2px;">[비판 봇 Dr.Eggbot] 반론 점검: BREADTH_DIVERGENCE: Attempting LONG breakout while only 30% of universe is above 200-MA. | 아직 48h 돌파선/밴드 상하단 타점에 완전히 닿지 않음(대기 필요).</div>
+          <div style="font-size:12.5px;color:#58a6ff;font-weight:bold;margin-top:4px;">⏸️ [관망/기각 (ABSTAIN)] 타점 미도달(대기) 사유로 진입 보류.</div>
+        </div>
+        
+    </div>
+
+    <!-- PANEL 05: POTATO-SHIELD RISK & BINANCE TESTNET TERMINAL -->
+    <div class="panel">
+      <h2>③ 🛡️ 내 돈 지킴이 안전벨트 (W2 방패) &amp; 바이낸스 계좌 상태</h2>
+      <div class="kpi-bar">
+        <div class="kpi"><div class="kpi-title">현재 계좌 연결 모드</div><div class="kpi-val" style="font-size:13px;color:#58a6ff;">SHADOW_DRY_RUN (No .env Testnet Key Yet)</div></div>
+        <div class="kpi"><div class="kpi-title">계좌 가용 잔고</div><div class="kpi-val">$1,000.00 USDT</div></div>
+        <div class="kpi"><div class="kpi-title">바이낸스 서버 통신 속도</div><div class="kpi-val">124.83 ms</div></div>
+      </div>
+      <p style="font-size:13px;margin:6px 0;"><strong>절대 깨지지 않는 안전 규칙 (코드 강제):</strong> 1회 최대 손실 = <code>내 시드의 1.0% ($10)</code> | 하루 손실 한도(킬스위치) = <code>-2.0% ($20)</code> | 최대 레버리지 상한 = <code>5.0배</code></p>
+      <h3 style="margin-top:14px;font-size:14px;">📋 최근 봇이 결정한 주문 내역 (자동 장부)</h3>
+      <table>
+        <tr><th>시간</th><th>코인 (방향)</th><th>사용한 무기</th><th>진입가</th><th>자동 손절가</th><th>투입 금액 (배율)</th><th>심판 판정</th><th>주문 상태</th></tr>
+        
+        <tr>
+          <td>2026-10-23 05:56:23 UTC</td>
+          <td><strong>AVAXUSDT</strong> (LONG)</td>
+          <td><code>TREND</code></td>
+          <td>$9.2570</td>
+          <td>$9.0754</td>
+          <td>$452.11 (0.45x)</td>
+          <td><code>ABSTAIN_WAIT</code></td>
+          <td><code>WAIT_FOR_TRIGGER</code></td>
+        </tr>
+        
+        <tr>
+          <td>2026-10-23 05:56:23 UTC</td>
+          <td><strong>ADAUSDT</strong> (SHORT)</td>
+          <td><code>TREND</code></td>
+          <td>$0.2159</td>
+          <td>$0.2209</td>
+          <td>$391.71 (0.39x)</td>
+          <td><code>ABSTAIN_WAIT</code></td>
+          <td><code>WAIT_FOR_TRIGGER</code></td>
+        </tr>
+        
+        <tr>
+          <td>2026-10-23 05:56:23 UTC</td>
+          <td><strong>LTCUSDT</strong> (SHORT)</td>
+          <td><code>WONYOTTI_VOL_CLUSTER</code></td>
+          <td>$59.3400</td>
+          <td>$60.4906</td>
+          <td>$456.83 (0.46x)</td>
+          <td><code>APPROVED_EXECUTE</code></td>
+          <td><code>SIMULATED_FILLED</code></td>
+        </tr>
+        
+        <tr>
+          <td>2026-10-23 05:49:48 UTC</td>
+          <td><strong>AVAXUSDT</strong> (LONG)</td>
+          <td><code>TREND</code></td>
+          <td>$9.2570</td>
+          <td>$9.0754</td>
+          <td>$452.11 (0.45x)</td>
+          <td><code>ABSTAIN_WAIT</code></td>
+          <td><code>WAIT_FOR_TRIGGER</code></td>
+        </tr>
+        
+        <tr>
+          <td>2026-10-23 05:49:48 UTC</td>
+          <td><strong>ADAUSDT</strong> (SHORT)</td>
+          <td><code>TREND</code></td>
+          <td>$0.2159</td>
+          <td>$0.2209</td>
+          <td>$391.71 (0.39x)</td>
+          <td><code>ABSTAIN_WAIT</code></td>
+          <td><code>WAIT_FOR_TRIGGER</code></td>
+        </tr>
+        
+        <tr>
+          <td>2026-10-23 05:49:48 UTC</td>
+          <td><strong>LTCUSDT</strong> (SHORT)</td>
+          <td><code>WONYOTTI_VOL_CLUSTER</code></td>
+          <td>$59.3400</td>
+          <td>$60.4906</td>
+          <td>$456.83 (0.46x)</td>
+          <td><code>APPROVED_EXECUTE</code></td>
+          <td><code>SIMULATED_FILLED</code></td>
+        </tr>
+        
+        <tr>
+          <td>2026-10-23 05:43:32 UTC</td>
+          <td><strong>AVAXUSDT</strong> (LONG)</td>
+          <td><code>TREND</code></td>
+          <td>$9.2570</td>
+          <td>$9.0754</td>
+          <td>$452.11 (0.45x)</td>
+          <td><code>ABSTAIN_WAIT</code></td>
+          <td><code>WAIT_FOR_TRIGGER</code></td>
+        </tr>
+        
+        <tr>
+          <td>2026-10-23 05:43:32 UTC</td>
+          <td><strong>LTCUSDT</strong> (SHORT)</td>
+          <td><code>TREND</code></td>
+          <td>$59.3400</td>
+          <td>$60.4906</td>
+          <td>$456.83 (0.46x)</td>
+          <td><code>ABSTAIN_WAIT</code></td>
+          <td><code>WAIT_FOR_TRIGGER</code></td>
+        </tr>
+        
+      </table>
+    </div>
+  </div>
+
+  <!-- PANEL 04: STRATEGY LAB & W1 REJECTION MACHINE -->
+  <div class="panel-full">
+    <h2>④ 🏆 전략 연구소 성적표: 지난 1년(360일) 동안 어떤 전략이 돈을 제일 잘 벌었나요? (수수료·슬리피지 모두 차감 후 실제 순수익)</h2>
+    <table>
+      <tr>
+        <th>전략 운용 모드 (초기 자금 $1,000 기준, 360일 실데이터)</th>
+        <th>총 매매 횟수</th>
+        <th>수수료 빼기 전 수익</th>
+        <th>총 수수료·슬리피지 비용</th>
+        <th>💎 최종 순수익 (내 주머니에 남는 돈)</th>
+        <th>비용 대비 수익 배수</th>
+        <th>승률</th>
+        <th>최대 계좌 낙폭 (MDD)</th>
+      </tr>
+      
+        <tr >
+          <td>① 무지성 역추세 24/7 가동 (Blind Mean-Reversion)</td>
+          <td>603건</td>
+          <td>$-334.11</td>
+          <td>$254.14</td>
+          <td style="color:#f85149;font-size:14px;">$-588.26</td>
+          <td>-1.31x (Net/Cost: -2.31x)</td>
+          <td>53.4%</td>
+          <td>60.56%</td>
+        </tr>
+        
+        <tr >
+          <td>② 무지성 추세돌파 24/7 가동 (Blind Trend-Breakout)</td>
+          <td>236건</td>
+          <td>$+40.89</td>
+          <td>$113.36</td>
+          <td style="color:#f85149;font-size:14px;">$-72.47</td>
+          <td>0.36x (Net/Cost: -0.64x)</td>
+          <td>31.8%</td>
+          <td>24.85%</td>
+        </tr>
+        
+        <tr style="background:#1c2d24;font-weight:bold;">
+          <td>③ 3축 장세 판독 + 기본 멀티 전략 스위처 (audit_bot.xml)</td>
+          <td>117건</td>
+          <td>$+201.29</td>
+          <td>$65.21</td>
+          <td style="color:#3fb950;font-size:14px;">$+136.08</td>
+          <td>3.09x (Net/Cost: +2.09x)</td>
+          <td>34.2%</td>
+          <td>18.06%</td>
+        </tr>
+        
+        <tr style="background:#1c2d24;font-weight:bold;">
+          <td>🏆 ④ 워뇨띠 멀티캔들 거래량+사토시 상대강도 스위처 (Wonyotti Mode)</td>
+          <td>97건</td>
+          <td>$+349.88</td>
+          <td>$72.43</td>
+          <td style="color:#3fb950;font-size:14px;">$+277.45</td>
+          <td>4.83x (Net/Cost: +3.83x)</td>
+          <td>41.2%</td>
+          <td>12.74%</td>
+        </tr>
+        
+    </table>
   </div>
 
   <!-- PANEL 02: 10-COIN LIQUIDITY, RESIDUAL & REGIME MAP -->
   <div class="panel-full">
-    <h2>PANEL 02 — 🗺️ 10-Coin Universe Regime &amp; Strategy Fit Map (Hatcha Intelligence)</h2>
+    <h2>⑤ 🗺️ 10개 메이저 코인 실시간 정밀 스캔 표 (참고용 세부 지표)</h2>
     <table>
       <tr>
-        <th>Symbol</th>
-        <th>Price</th>
-        <th>24h Return</th>
-        <th>Rel Strength vs BTC</th>
-        <th>Trend Axis</th>
-        <th>Volatility Axis (Rank)</th>
-        <th>ADX / RSI</th>
-        <th>Candle Delta</th>
-        <th>8h Funding</th>
-        <th>Mapped Strategy Fit (Conf)</th>
+        <th>코인명</th>
+        <th>현재 가격</th>
+        <th>24시간 등락률</th>
+        <th>비트코인 대비 강도(사토시)</th>
+        <th>추세 상태</th>
+        <th>변동성 상태</th>
+        <th>추세강도(ADX) / 과열도(RSI)</th>
+        <th>매수·매도 수급(Delta)</th>
+        <th>8시간 펀딩비</th>
+        <th>봇이 배정한 무기 (신뢰도)</th>
       </tr>
       
         <tr>
@@ -188,236 +408,19 @@
     </table>
   </div>
 
-  <div class="grid">
-    <!-- PANEL 03: AUTONOMOUS DEBATE LOG & SIGNAL MONITOR -->
-    <div class="panel">
-      <h2>PANEL 03 — ⚖️ 24/7 Autonomous Committee Debate Log (회의록: 리서치 vs 찬성 vs 비판 → 심판 결정)</h2>
-      
-        <div style="border:1px solid #30363d;border-left:4px solid #238636;padding:10px;margin-bottom:8px;border-radius:4px;background:#0d1117;">
-          <div style="font-size:13px;"><strong>LTCUSDT [SHORT 검토]</strong> | 배정: <code>TREND_BREAKOUT_SHORT</code> | 진입가: <code>$59.3400</code> | 손절가: <code>$60.4906</code> | 사이징: <code>$456.83 (0.46x)</code></div>
-          <div style="font-size:12px;color:#c9d1d9;margin-top:4px;">[리서치 봇 Hatcha] LTCUSDT 현재가 $59.3400 (24h -2.18%, BTC 대비 상대강도 -0.94%). 장세=TRENDING_DOWN/NORMAL, ADX=56.1, RSI=50, 수급 Delta=-0.24, 펀딩비=-0.0043%.</div>
-          <div style="font-size:12px;color:#3fb950;margin-top:2px;">[찬성 봇 Bull/Trend] 현재 배정 전략은 `TREND_BREAKOUT_SHORT`입니다. SHORT 방향 진입 시 손절폭 1.94%($60.4906), 비용 대비 기대수익비 30.5배로 손익비가 우수합니다.</div>
-          <div style="font-size:12px;color:#f0883e;margin-top:2px;">[비판 봇 Dr.Eggbot] 반론 점검: No fatal cross-asset or funding contradictions detected; standard stop-loss applies. | 돌파/밴드 타점 도달 완료!</div>
-          <div style="font-size:12.5px;color:#58a6ff;font-weight:bold;margin-top:4px;">✅ [최종 승인 - 즉시 주문 집행] 타점 도달 및 리스크 감사 통과! 456.83 USDT (0.46x) 주문 전송.</div>
-        </div>
-        
-        <div style="border:1px solid #30363d;border-left:4px solid #8b949e;padding:10px;margin-bottom:8px;border-radius:4px;background:#0d1117;">
-          <div style="font-size:13px;"><strong>ADAUSDT [SHORT 검토]</strong> | 배정: <code>TREND_BREAKOUT_SHORT</code> | 진입가: <code>$0.2159</code> | 손절가: <code>$0.2209</code> | 사이징: <code>$391.71 (0.39x)</code></div>
-          <div style="font-size:12px;color:#c9d1d9;margin-top:4px;">[리서치 봇 Hatcha] ADAUSDT 현재가 $0.2159 (24h -2.04%, BTC 대비 상대강도 -0.81%). 장세=TRENDING_DOWN/NORMAL, ADX=56.6, RSI=46, 수급 Delta=+0.14, 펀딩비=-0.0090%.</div>
-          <div style="font-size:12px;color:#3fb950;margin-top:2px;">[찬성 봇 Bull/Trend] 현재 배정 전략은 `TREND_BREAKOUT_SHORT`입니다. SHORT 방향 진입 시 손절폭 2.30%($0.2209), 비용 대비 기대수익비 36.2배로 손익비가 우수합니다.</div>
-          <div style="font-size:12px;color:#f0883e;margin-top:2px;">[비판 봇 Dr.Eggbot] 반론 점검: No fatal cross-asset or funding contradictions detected; standard stop-loss applies. | 아직 48h 돌파선/밴드 상하단 타점에 완전히 닿지 않음(대기 필요).</div>
-          <div style="font-size:12.5px;color:#58a6ff;font-weight:bold;margin-top:4px;">⏸️ [관망/기각 (ABSTAIN)] 타점 미도달(대기) 사유로 진입 보류.</div>
-        </div>
-        
-        <div style="border:1px solid #30363d;border-left:4px solid #8b949e;padding:10px;margin-bottom:8px;border-radius:4px;background:#0d1117;">
-          <div style="font-size:13px;"><strong>AVAXUSDT [LONG 검토]</strong> | 배정: <code>TREND_BREAKOUT_SHORT</code> | 진입가: <code>$9.2570</code> | 손절가: <code>$9.0754</code> | 사이징: <code>$452.11 (0.45x)</code></div>
-          <div style="font-size:12px;color:#c9d1d9;margin-top:4px;">[리서치 봇 Hatcha] AVAXUSDT 현재가 $9.2570 (24h -1.16%, BTC 대비 상대강도 +0.07%). 장세=TRENDING_DOWN/COMPRESSED, ADX=54.8, RSI=53, 수급 Delta=-0.05, 펀딩비=-0.0049%.</div>
-          <div style="font-size:12px;color:#3fb950;margin-top:2px;">[찬성 봇 Bull/Trend] 현재 배정 전략은 `TREND_BREAKOUT_SHORT`입니다. LONG 방향 진입 시 손절폭 1.96%($9.0754), 비용 대비 기대수익비 30.8배로 손익비가 우수합니다.</div>
-          <div style="font-size:12px;color:#f0883e;margin-top:2px;">[비판 봇 Dr.Eggbot] 반론 점검: BREADTH_DIVERGENCE: Attempting LONG breakout while only 30% of universe is above 200-MA. | 아직 48h 돌파선/밴드 상하단 타점에 완전히 닿지 않음(대기 필요).</div>
-          <div style="font-size:12.5px;color:#58a6ff;font-weight:bold;margin-top:4px;">⏸️ [관망/기각 (ABSTAIN)] 타점 미도달(대기) 사유로 진입 보류.</div>
-        </div>
-        
-        <div style="border:1px solid #30363d;border-left:4px solid #8b949e;padding:10px;margin-bottom:8px;border-radius:4px;background:#0d1117;">
-          <div style="font-size:13px;"><strong>SUIUSDT [SHORT 검토]</strong> | 배정: <code>TREND_BREAKOUT_SHORT</code> | 진입가: <code>$0.9924</code> | 손절가: <code>$1.0138</code> | 사이징: <code>$415.84 (0.42x)</code></div>
-          <div style="font-size:12px;color:#c9d1d9;margin-top:4px;">[리서치 봇 Hatcha] SUIUSDT 현재가 $0.9924 (24h -1.30%, BTC 대비 상대강도 -0.07%). 장세=TRENDING_DOWN/COMPRESSED, ADX=53.8, RSI=55, 수급 Delta=-0.06, 펀딩비=-0.0024%.</div>
-          <div style="font-size:12px;color:#3fb950;margin-top:2px;">[찬성 봇 Bull/Trend] 현재 배정 전략은 `TREND_BREAKOUT_SHORT`입니다. SHORT 방향 진입 시 손절폭 2.15%($1.0138), 비용 대비 기대수익비 33.9배로 손익비가 우수합니다.</div>
-          <div style="font-size:12px;color:#f0883e;margin-top:2px;">[비판 봇 Dr.Eggbot] 반론 점검: No fatal cross-asset or funding contradictions detected; standard stop-loss applies. | 아직 48h 돌파선/밴드 상하단 타점에 완전히 닿지 않음(대기 필요).</div>
-          <div style="font-size:12.5px;color:#58a6ff;font-weight:bold;margin-top:4px;">⏸️ [관망/기각 (ABSTAIN)] 타점 미도달(대기) 사유로 진입 보류.</div>
-        </div>
-        
-        <div style="border:1px solid #30363d;border-left:4px solid #8b949e;padding:10px;margin-bottom:8px;border-radius:4px;background:#0d1117;">
-          <div style="font-size:13px;"><strong>BNBUSDT [LONG 검토]</strong> | 배정: <code>TREND_BREAKOUT_SHORT</code> | 진입가: <code>$740.2900</code> | 손절가: <code>$729.1857</code> | 사이징: <code>$571.43 (0.57x)</code></div>
-          <div style="font-size:12px;color:#c9d1d9;margin-top:4px;">[리서치 봇 Hatcha] BNBUSDT 현재가 $740.2900 (24h -0.24%, BTC 대비 상대강도 +0.99%). 장세=TRENDING_DOWN/EXPANDING, ADX=48.7, RSI=64, 수급 Delta=-0.10, 펀딩비=0.0000%.</div>
-          <div style="font-size:12px;color:#3fb950;margin-top:2px;">[찬성 봇 Bull/Trend] 현재 배정 전략은 `TREND_BREAKOUT_SHORT`입니다. LONG 방향 진입 시 손절폭 1.50%($729.1857), 비용 대비 기대수익비 23.6배로 손익비가 우수합니다.</div>
-          <div style="font-size:12px;color:#f0883e;margin-top:2px;">[비판 봇 Dr.Eggbot] 반론 점검: BREADTH_DIVERGENCE: Attempting LONG breakout while only 30% of universe is above 200-MA. | 아직 48h 돌파선/밴드 상하단 타점에 완전히 닿지 않음(대기 필요).</div>
-          <div style="font-size:12.5px;color:#58a6ff;font-weight:bold;margin-top:4px;">⏸️ [관망/기각 (ABSTAIN)] 타점 미도달(대기) 사유로 진입 보류.</div>
-        </div>
-        
-    </div>
-
-    <!-- PANEL 05: POTATO-SHIELD RISK & BINANCE TESTNET TERMINAL -->
-    <div class="panel">
-      <h2>PANEL 05 — 🛡️ Potato-Shield Risk &amp; Binance Testnet Terminal</h2>
-      <div class="kpi-bar">
-        <div class="kpi"><div class="kpi-title">Execution Mode</div><div class="kpi-val" style="font-size:13px;color:#58a6ff;">SHADOW_DRY_RUN (No .env Testnet Key Yet)</div></div>
-        <div class="kpi"><div class="kpi-title">Testnet Balance</div><div class="kpi-val">$1,000.00 USDT</div></div>
-        <div class="kpi"><div class="kpi-title">Testnet Ping</div><div class="kpi-val">108.53 ms</div></div>
-      </div>
-      <p style="font-size:12.5px;margin:6px 0;"><strong>Hard Risk Constitution (W2 Verified):</strong> Per-Trade Cap = <code>1.0% (Max 1.5%)</code> | Daily Kill Switch = <code>-2.0%</code> | Max Gross Leverage = <code>5.0x</code></p>
-      <ul style="font-size:12px;color:#3fb950;margin:6px 0;padding-left:18px;">
-        <li><code>PASS: test_1_cost_module_two_tier_slippage_and_funding (0.10% fee + 0.04%/0.15% 2-tier slippage + 8h funding)</code></li><li><code>PASS: test_2_shift1_zero_lookahead_leakage (0.000000e+00 future mutation leakage across all features)</code></li><li><code>PASS: test_3_w2_position_sizing_cap_and_gap_loss_logged ([0.5%, 1.5%] cap, 0.30% floor, unclipped gap loss logged)</code></li><li><code>PASS: test_4_w2_daily_loss_kill_switch_enforcement (-2.0% daily loss hard stop verified)</code></li><li><code>PASS: test_5_w2_order_layer_fail_closed_adapter (timeout, partial fill, leverage & min-notional fail-closed)</code></li><li><code>PASS: test_6_assert_random_control_matches_execution_model (shared exit_model, cost_model, sizing & SHA-256 hash)</code></li>
-      </ul>
-      <h3 style="margin-top:14px;font-size:13px;">Recent Autonomous Decision &amp; Order Audit Ledger</h3>
-      <table>
-        <tr><th>Time</th><th>Symbol</th><th>Strat</th><th>Entry</th><th>Stop</th><th>Size</th><th>Verdict</th><th>Order</th></tr>
-        
-        <tr>
-          <td>2026-10-23 05:49:48 UTC</td>
-          <td><strong>AVAXUSDT</strong> (LONG)</td>
-          <td><code>TREND</code></td>
-          <td>$9.2570</td>
-          <td>$9.0754</td>
-          <td>$452.11 (0.45x)</td>
-          <td><code>ABSTAIN_WAIT</code></td>
-          <td><code>WAIT_FOR_TRIGGER</code></td>
-        </tr>
-        
-        <tr>
-          <td>2026-10-23 05:49:48 UTC</td>
-          <td><strong>ADAUSDT</strong> (SHORT)</td>
-          <td><code>TREND</code></td>
-          <td>$0.2159</td>
-          <td>$0.2209</td>
-          <td>$391.71 (0.39x)</td>
-          <td><code>ABSTAIN_WAIT</code></td>
-          <td><code>WAIT_FOR_TRIGGER</code></td>
-        </tr>
-        
-        <tr>
-          <td>2026-10-23 05:49:48 UTC</td>
-          <td><strong>LTCUSDT</strong> (SHORT)</td>
-          <td><code>WONYOTTI_VOL_CLUSTER</code></td>
-          <td>$59.3400</td>
-          <td>$60.4906</td>
-          <td>$456.83 (0.46x)</td>
-          <td><code>APPROVED_EXECUTE</code></td>
-          <td><code>SIMULATED_FILLED</code></td>
-        </tr>
-        
-        <tr>
-          <td>2026-10-23 05:43:32 UTC</td>
-          <td><strong>AVAXUSDT</strong> (LONG)</td>
-          <td><code>TREND</code></td>
-          <td>$9.2570</td>
-          <td>$9.0754</td>
-          <td>$452.11 (0.45x)</td>
-          <td><code>ABSTAIN_WAIT</code></td>
-          <td><code>WAIT_FOR_TRIGGER</code></td>
-        </tr>
-        
-        <tr>
-          <td>2026-10-23 05:43:32 UTC</td>
-          <td><strong>LTCUSDT</strong> (SHORT)</td>
-          <td><code>TREND</code></td>
-          <td>$59.3400</td>
-          <td>$60.4906</td>
-          <td>$456.83 (0.46x)</td>
-          <td><code>ABSTAIN_WAIT</code></td>
-          <td><code>WAIT_FOR_TRIGGER</code></td>
-        </tr>
-        
-        <tr>
-          <td>2026-10-23 05:43:32 UTC</td>
-          <td><strong>ADAUSDT</strong> (SHORT)</td>
-          <td><code>TREND</code></td>
-          <td>$0.2159</td>
-          <td>$0.2209</td>
-          <td>$391.71 (0.39x)</td>
-          <td><code>ABSTAIN_WAIT</code></td>
-          <td><code>WAIT_FOR_TRIGGER</code></td>
-        </tr>
-        
-        <tr>
-          <td>2026-10-23 05:33:03 UTC</td>
-          <td><strong>AVAXUSDT</strong> (LONG)</td>
-          <td><code>TREND</code></td>
-          <td>$9.2570</td>
-          <td>$9.0754</td>
-          <td>$452.11 (0.45x)</td>
-          <td><code>ABSTAIN_WAIT</code></td>
-          <td><code>WAIT_FOR_TRIGGER</code></td>
-        </tr>
-        
-        <tr>
-          <td>2026-10-23 05:33:03 UTC</td>
-          <td><strong>LTCUSDT</strong> (SHORT)</td>
-          <td><code>TREND</code></td>
-          <td>$59.3400</td>
-          <td>$60.4906</td>
-          <td>$456.83 (0.46x)</td>
-          <td><code>ABSTAIN_WAIT</code></td>
-          <td><code>WAIT_FOR_TRIGGER</code></td>
-        </tr>
-        
-      </table>
-    </div>
-  </div>
-
-  <!-- PANEL 04: STRATEGY LAB & W1 REJECTION MACHINE -->
-  <div class="panel-full">
-    <h2>PANEL 04 — 🔬 Strategy Lab: Single Strategy vs. 3-Axis Regime Switcher (360-Day Real Binance Proof)</h2>
-    <table>
-      <tr>
-        <th>Strategy Mode (360 Days, 10 Coins, Full Fees+Slippage+Funding)</th>
-        <th>Trades</th>
-        <th>Gross PnL</th>
-        <th>Total Cost</th>
-        <th>Net PnL (After Cost)</th>
-        <th>Gross/Cost Ratio</th>
-        <th>Win Rate</th>
-        <th>Max Drawdown</th>
-      </tr>
-      
-        <tr >
-          <td>① 무지성 역추세 24/7 가동 (Blind Mean-Reversion)</td>
-          <td>603건</td>
-          <td>$-334.11</td>
-          <td>$254.14</td>
-          <td style="color:#f85149;font-size:14px;">$-588.26</td>
-          <td>-1.31x (Net/Cost: -2.31x)</td>
-          <td>53.4%</td>
-          <td>60.56%</td>
-        </tr>
-        
-        <tr >
-          <td>② 무지성 추세돌파 24/7 가동 (Blind Trend-Breakout)</td>
-          <td>236건</td>
-          <td>$+40.89</td>
-          <td>$113.36</td>
-          <td style="color:#f85149;font-size:14px;">$-72.47</td>
-          <td>0.36x (Net/Cost: -0.64x)</td>
-          <td>31.8%</td>
-          <td>24.85%</td>
-        </tr>
-        
-        <tr style="background:#1c2d24;font-weight:bold;">
-          <td>③ 3축 장세 판독 + 기본 멀티 전략 스위처 (audit_bot.xml)</td>
-          <td>117건</td>
-          <td>$+201.29</td>
-          <td>$65.21</td>
-          <td style="color:#3fb950;font-size:14px;">$+136.08</td>
-          <td>3.09x (Net/Cost: +2.09x)</td>
-          <td>34.2%</td>
-          <td>18.06%</td>
-        </tr>
-        
-        <tr style="background:#1c2d24;font-weight:bold;">
-          <td>🏆 ④ 워뇨띠 멀티캔들 거래량+사토시 상대강도 스위처 (Wonyotti Mode)</td>
-          <td>97건</td>
-          <td>$+349.88</td>
-          <td>$72.43</td>
-          <td style="color:#3fb950;font-size:14px;">$+277.45</td>
-          <td>4.83x (Net/Cost: +3.83x)</td>
-          <td>41.2%</td>
-          <td>12.74%</td>
-        </tr>
-        
-    </table>
-  </div>
-
   <!-- PANEL 06: CRUMB PERSISTENT SQLITE RESEARCH JOURNAL -->
   <div class="panel-full">
-    <h2>PANEL 06 — 🍞 Crumb SQLite Institutional Memory (`data/crumb_memory.db` Experiment History)</h2>
+    <h2>⑥ 🍞 과거 연구 실험 기록 보관소 (`data/crumb_memory.db` — 실패한 전략을 다시 쓰지 않기 위한 기억 장치)</h2>
     <table>
       <tr>
-        <th>Recorded At</th>
-        <th>Strategy Name</th>
-        <th>Config SHA-256</th>
-        <th>Trades</th>
-        <th>Gross PnL</th>
-        <th>Total Cost</th>
-        <th>Net PnL</th>
-        <th>Verdict</th>
+        <th>기록 시각</th>
+        <th>실험한 전략 이름</th>
+        <th>설정 해시</th>
+        <th>거래 수</th>
+        <th>세전 수익</th>
+        <th>총 비용</th>
+        <th>최종 순수익</th>
+        <th>합격/폐기 판정</th>
       </tr>
       
         <tr>
