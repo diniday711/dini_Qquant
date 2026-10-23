@@ -1,0 +1,45 @@
+{
+  "1_blind_mean_reversion": {
+    "trades": 603,
+    "sub_strategy_mix": {
+      "MEAN_REV": 603
+    },
+    "gross_pnl_usd": -334.1126280097202,
+    "total_cost_usd": 254.14335660855403,
+    "net_pnl_usd": -588.2559846182743,
+    "gross_to_cost_ratio": -1.3146620571488687,
+    "net_to_cost_ratio": -2.314662057148869,
+    "sharpe": -3.744383697174442,
+    "mdd_pct": 0.6056489122752884,
+    "win_rate": 0.5339966832504146
+  },
+  "2_blind_trend_breakout": {
+    "trades": 236,
+    "sub_strategy_mix": {
+      "TREND": 236
+    },
+    "gross_pnl_usd": 40.894210913827365,
+    "total_cost_usd": 113.36065073021032,
+    "net_pnl_usd": -72.46643981638289,
+    "gross_to_cost_ratio": 0.36074432045342136,
+    "net_to_cost_ratio": -0.639255679546578,
+    "sharpe": -0.2834850518925815,
+    "mdd_pct": 0.24847072361281564,
+    "win_rate": 0.3177966101694915
+  },
+  "3_regime_switched_multi_strategy": {
+    "trades": 117,
+    "sub_strategy_mix": {
+      "TREND": 111,
+      "MEAN_REV": 6
+    },
+    "gross_pnl_usd": 201.2948874190533,
+    "total_cost_usd": 65.21392280580402,
+    "net_pnl_usd": 136.08096461324925,
+    "gross_to_cost_ratio": 3.086685768290236,
+    "net_to_cost_ratio": 2.086685768290235,
+    "sharpe": 0.5770031292509117,
+    "mdd_pct": 0.1805996461834507,
+    "win_rate": 0.3418803418803419
+  }
+}
