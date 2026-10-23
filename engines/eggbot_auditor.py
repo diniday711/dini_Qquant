@@ -55,11 +55,11 @@ class DrEggbotAuditor:
             )
 
         # 2. Breadth Divergence Check (`audit_bot.xml`: "indices rising while breadth falls")
-        if side == 1 and sub_strategy == "TREND" and market_breadth_pct < 0.40:
+        if side == 1 and sub_strategy in ("TREND", "WONYOTTI_VOL_CLUSTER") and market_breadth_pct < 0.40:
             blocking_errors.append(
                 f"BREADTH_DIVERGENCE: Attempting LONG breakout while only {market_breadth_pct:.0%} of universe is above 200-MA."
             )
-        elif side == -1 and sub_strategy == "TREND" and market_breadth_pct > 0.60:
+        elif side == -1 and sub_strategy in ("TREND", "WONYOTTI_VOL_CLUSTER") and market_breadth_pct > 0.60:
             blocking_errors.append(
                 f"BREADTH_DIVERGENCE: Attempting SHORT breakdown while {market_breadth_pct:.0%} of universe is above 200-MA."
             )

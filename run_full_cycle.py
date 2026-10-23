@@ -162,13 +162,19 @@ def build_autonomous_debate_and_regime_scan(
         sub_strat = "TREND" if "TREND" in strategy_fit else "MEAN_REV"
         is_exact_trigger = False
 
-        if strategy_fit == "TREND_BREAKOUT_LONG" and close_px >= high_48 * 0.995 and delta_r > 0.08:
+        if strategy_fit == "TREND_BREAKOUT_LONG" and (
+            (close_px >= high_48 * 0.995 and delta_r > 0.08)
+            or (adx_val >= 35.0 and rel_str >= 0.008 and delta_r > 0.12)
+        ):
             cand_side = 1
-            sub_strat = "TREND"
+            sub_strat = "WONYOTTI_VOL_CLUSTER"
             is_exact_trigger = True
-        elif strategy_fit == "TREND_BREAKOUT_SHORT" and close_px <= low_48 * 1.005 and delta_r < -0.08:
+        elif strategy_fit == "TREND_BREAKOUT_SHORT" and (
+            (close_px <= low_48 * 1.005 and delta_r < -0.08)
+            or (adx_val >= 35.0 and rel_str <= -0.008 and delta_r < -0.12)
+        ):
             cand_side = -1
-            sub_strat = "TREND"
+            sub_strat = "WONYOTTI_VOL_CLUSTER"
             is_exact_trigger = True
         elif strategy_fit == "RANGE_MEAN_REVERSION":
             if close_px <= bb_dn * 1.005 and rsi_val < 38.0:
