@@ -1,8 +1,8 @@
-# 🏛️ [Q-Stack 24/7 정례 브리핑 & AI 위원회 회의록] (2026-10-23 06:44 UTC)
+# 🏛️ [Q-Stack 24/7 정례 브리핑 & AI 위원회 회의록] (2026-10-23 06:49 UTC)
 
 ## 0. 🌍 WorldMonitor 실시간 세계 정세·거시·뉴스 레이더 (전략 선택 근거)
-- **글로벌 정세 종합 판독**: 🌍 [글로벌 정세 중립/선별장] 공포탐욕지수=50(Neutral), 금(PAXG) 24h=-1.75%, BTC 24h=-1.24% (거시 뉴스 0건 / 충격 뉴스 2건). 거시적 쏠림이 크지 않으므로 코인별 3축 차트 장세와 사토시 상대강도에 따라 롱/숏 무기를 선별 적용합니다.
-- **공포·탐욕 지수**: `50 (Neutral)` | **금(PAXG) 24h**: `-1.75%` | **허용 방향**: `롱(X) / 숏(O)`
+- **글로벌 정세 종합 판독**: 🌍 [글로벌 정세 선별장] 일간 공포탐욕=50(Neutral, 전일 68 대비 -18p) | 실시간 장중 체감=38(Fear (장중 공포/약세)) | 바이낸스 개미 롱 비율=68.8% (고래 롱=60.4%) | 금(PAXG) 24h=-1.74%, BTC 24h=-1.24% (거시 뉴스 0건 / 충격 뉴스 2건). 현재 장중 체감 심리는 'Fear (장중 공포/약세)'이며 개미들의 68.8%가 롱에 물려 있으므로 롱을 차단하고 코인별 숏/역추세 무기를 선별 적용합니다.
+- **공포·탐욕 지수**: `50 (Neutral)` | **금(PAXG) 24h**: `-1.74%` | **허용 방향**: `롱(X) / 숏(O)`
   - `[일반]` Gold Falls Below $4,000 for the First Time Since July. What’s Next?
   - `[일반]` Is the S&P 500 No Longer the Economy? DataTrek's Nick Colas Weighs In
   - `[🚨충격/위기]` Dow Jones Futures: Moderna Crashes, Meta Fuels AI Meltdown, But Warren Buffett Market Thriving
@@ -10,7 +10,7 @@
 ## 1. 🌤️ 현재 3축 차트 장세 판독 (Weather Radar)
 - **지배적 추세**: `TRENDING_DOWN` | **변동성**: `NORMAL / COMPRESSED`
 - **시장 폭 (200MA 상회 비율)**: `30%` | **BTC 24h**: `-1.24%`
-- **최종 선택된 전략 무기**: **`HYBRID_REGIME_SWITCHER (거시 중립 -> 코인별 사토시 상대강도 & 장세 맞춤 선별)`**
+- **최종 선택된 전략 무기**: **`HYBRID_REGIME_SWITCHER (거시 선별 -> 코인별 사토시 상대강도 & 장세 맞춤 선별)`**
 - **테스트넷 계좌 상태**: `SHADOW_DRY_RUN (모의 시뮬레이션 모드 - .env 키 입력 시 실전 테스트넷 전환)` | 가용 잔고: **`$1,000.00 USDT`**
 
 ## 2. ⚖️ 상위 주목 종목 AI 위원회 찬반 회의록 (Autonomous Debate Log)

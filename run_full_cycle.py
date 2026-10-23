@@ -345,7 +345,13 @@ def build_autonomous_debate_and_regime_scan(
             "global_regime_code": world_verdict.global_regime_code,
             "recommended_strategy_family": world_verdict.recommended_strategy_family,
             "fear_greed_value": world_verdict.fear_greed_value,
+            "fear_greed_prev_value": world_verdict.fear_greed_prev_value,
+            "fear_greed_delta": world_verdict.fear_greed_delta,
             "fear_greed_label": world_verdict.fear_greed_label,
+            "realtime_intraday_fg": world_verdict.realtime_intraday_fg,
+            "realtime_intraday_label": world_verdict.realtime_intraday_label,
+            "retail_long_pct": world_verdict.retail_long_pct,
+            "whale_long_pct": world_verdict.whale_long_pct,
             "gold_24h_return_pct": world_verdict.gold_24h_return_pct,
             "safe_haven_divergence_pct": world_verdict.safe_haven_divergence_pct,
             "shock_score": world_verdict.shock_score,
@@ -620,9 +626,11 @@ def generate_6panel_dashboard_html(
     <div style="font-size:13.5px;background:#121d2f;padding:12px;border-radius:6px;border-left:4px solid #58a6ff;margin-bottom:12px;">
       <div><strong>🌍 WorldMonitor 실시간 세계 정세 판독 &amp; 전략 선택 이유:</strong> {wm.get('korean_summary', '')}</div>
       <div style="margin-top:6px;font-size:12.5px;color:#8b949e;">
-        📊 <strong>크립토 공포·탐욕 지수:</strong> <code>{wm.get('fear_greed_value', 50)} ({wm.get('fear_greed_label', 'Neutral')})</code> |
-        🪙 <strong>안전자산 금(PAXG) 24h:</strong> <code>{wm.get('gold_24h_return_pct', 0.0):+.2%}</code> |
-        🚦 <strong>거시 허용 방향:</strong> <code>롱({'허용' if wm.get('allow_long') else '차단'}) / 숏({'허용' if wm.get('allow_short') else '차단'})</code>
+        📊 <strong>일간 공포탐욕(Alternative.me):</strong> <code>{wm.get('fear_greed_value', 50)}점 (전일 {wm.get('fear_greed_prev_value', 68)}점 대비 {wm.get('fear_greed_delta', -18):+d}p)</code> |
+        ⚡ <strong>실시간 장중 체감 지수:</strong> <code style="color:#f0883e;">{wm.get('realtime_intraday_fg', 38)}점 ({wm.get('realtime_intraday_label', 'Fear')})</code> |
+        🐋 <strong>바이낸스 선물 롱 비율:</strong> <code>개미 {wm.get('retail_long_pct', 0.688):.1%} vs 고래 {wm.get('whale_long_pct', 0.604):.1%}</code> |
+        🪙 <strong>금(PAXG) 24h:</strong> <code>{wm.get('gold_24h_return_pct', 0.0):+.2%}</code> |
+        🚦 <strong>거시 방향:</strong> <code>롱({'허용' if wm.get('allow_long') else '차단'}) / 숏({'허용' if wm.get('allow_short') else '차단'})</code>
       </div>
       <ul style="margin:6px 0 0 0;padding-left:18px;font-size:12px;color:#c9d1d9;">
         {wm_headlines_html}
