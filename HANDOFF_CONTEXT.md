@@ -1,77 +1,58 @@
-# 🧠 Q-Stack: 세션 인수인계 및 전체 컨텍스트 마스터 문서 (`HANDOFF_CONTEXT.md`)
+# 🏛️ Q-Stack v3.2: 24/7 Autonomous Multi-Agent Crypto Quant Desk (Handoff Context)
 
-> **집 컴퓨터(또는 새 Antigravity 세션)에서 이어서 작업하는 방법:**
-> 새 채팅창을 열고 아래 한 줄만 입력하시면, 이전 대화 맥락을 100% 동일하게 이어받아 즉시 작업을 계속할 수 있습니다:
-> **`"이 워크스페이스의 HANDOFF_CONTEXT.md, PRD.md, reports/phase1_summary.json을 모두 읽고 현재 Q-Stack 퀀트 구축 작업을 이어서 진행해줘."`**
-
----
-
-## 1. 프로젝트 목표 및 배경
-* **최종 목표**: 감정과 추측을 배제하고 **바이낸스 선물(USDT-M Perpetual Futures)** 시장에서 소액 시드로 비대칭 손익비와 복리 수익을 창출하는 **1인 AI 퀀트 헤지펀드 시스템(Q-Stack)** 구축.
-* **핵심 설계 철학 (수집 자료 통합)**:
-  1. **멀티 에이전트 헤지펀드 논문 & Lauren Tan `pstack`**: 역할 분리(`1 Bot = 1 Trigger = 1 Output`) 및 **결정론적 리스크 엔진(`Potato-Shield`)**을 통한 자본 통제 (절대 LLM에게 직접 주문/레버리지 권한을 주지 않음).
-  2. **`CITADEL` Liquidity Intelligence Engine**: 스윙 고/저점 유동성 스윕(Liquidity Sweep / Failed Breakout), 변동성 압축 후 폭발, 오더플로우 흡수 포착.
-  3. **`@0xkvro` (The Quant Guide To Trading Randomness)**: 비트코인(시장 베타)과 공통 요인을 제거하고 남은 순수 **잔차(Residual)**의 왜곡을 사냥하며, 모든 패턴을 의심하는 **기각 머신(Rejection Machine)** 구축.
-  4. **`CreditRisk+` & Tail Risk 방어**: 1회 손실 캡(`0.5%~1.5%`), 일일 최대 손실 킬스위치(`-2.0%`), 갭(Gap) 손실 무절삭 기록.
+- **GitHub Repository**: `https://github.com/diniday711/dini_Qquant.git`
+- **Conversation ID**: `9f276f93-dce7-40a8-99f0-5fc0490a7d9b`
+- **Target Market**: Binance USDT-M Perpetual Futures (10-Coin Fixed Liquid Universe + `BTCUSDT` Benchmark + `PAXGUSDT` Safe-Haven Gold Proxy)
+- **Target Deployment**: Oracle Cloud Server (Singapore `ap-southeast-1`) + Hermes Agent (Discord Worker Bots using `codex`, `claude`, `opgo`)
 
 ---
 
-## 2. 3자 에이전트 위원회 (`dini_codex_bot`, `dini_claude_bot`, `dini_opgo`) 경과 요약
+## 1. Complete 6-Stage End-to-End Architecture (`run_full_cycle.py` & `qstack_cli.py`)
 
-### [Round 1 & Round 2 합의사항 (v2.1 구현 완료)]
-1. **과잉설계 선구축 배제**: 대시보드(`Suki`), 7인 LLM 토론 위원회, 거시 레이더(`WorldMonitor`), 80점 임의 가중치 산식은 Phase 1에서 제외하고, **단일 사전고정 Confluence 전략의 비용 후 엣지 검증(W1)**과 **리스크 엔진 강제 테스트(W2)**부터 수행.
-2. **사전등록 고정 명세 (`config.py`, SHA-256: `925b154685393ef3`)**:
-   - **고정 유니버스 (10개 알트 + BTC 벤치마크)**: `ETHUSDT`, `SOLUSDT`, `BNBUSDT`, `XRPUSDT`, `DOGEUSDT`, `ADAUSDT`, `AVAXUSDT`, `LINKUSDT`, `SUIUSDT`, `LTCUSDT`
-   - **지표 창**: 15분봉, 베타 회귀창 `W_beta = 96봉(24h)`, 잔차 누적창 `16봉(4h)`, 잔차 표준화창 `W_z = 192봉(48h)`, 스윙 고/저점 `N = 20봉(5h)`, 롤링 `VWAP(96)`, `ATR(20)` (모두 `shift(1)` 엄격 적용으로 미래참조 누수 0).
-   - **진입 조건**: `|residual_z| >= 2.5` + `Failed Breakout (20봉 고/저점 스윕 후 복귀 또는 윗/아랫꼬리 35% 이상 & candle_delta_15m 역방향 흡수)` + 규칙형 기각 필터(`|r_BTC(24)| >= 1.0%` 역행 시 기각, 기대수익 < 왕복비용×3배 시 기각).
-   - **명시적 청산 모델 (`simulate_single_trade_execution`)**:
-     - 초기 스탑: `max(ATR(20) * 1.5, 0.30%)` (시가 갭 돌파 시 스탑가로 자르지 않고 실제 불리한 시가로 무절삭 체결 및 `gap_loss_events` 기록).
-     - `TP1`: `VWAP(96)` 도달 시 50% 분할 익절 + 잔여 50% 물량 스탑을 진입가(Breakeven)로 이동.
-     - `TP2`: `|residual_z| <= 0.5` 도달 시 잔여 50% 전량 청산.
-     - 시간청산: `96봉(24h)` 강제 종료.
-   - **2단계 비용 모델 (`cost_model.py`)**: 왕복 수수료 `0.10%` + 2단계 왕복 슬리피지(정상 `0.04%`, 고변동/스윕 캔들 `0.15%`) + 실제 8시간 펀딩비 이력 반영.
-   - **동일 실행 모델 랜덤 대조군 (`shared_execution_model=True`)**: 전략과 1,000회 랜덤 대조군(`seed=20261023`)이 완전히 동일한 청산·사이징·비용 함수를 호출.
+Every 15-minute cycle executes the following 6 stages deterministically:
 
----
-
-## 3. Phase 1 (v2.1) 실증 결과 및 핵심 인사이트 (`reports/phase1_summary.json`)
-
-1. **[W2 게이트] 리스크 & 주문 계층 6대 유닛 테스트**: **`6/6 전원 PASS`** (`tests/test_w2_and_leakage.py`)
-2. **[W1 게이트] 180일 실데이터 검증 결과**:
-   - **표본 수**: 전체 **346건**, 후반 30% OOS **98건** (`>=300` 및 `>=90` 기준 **PASS**)
-   - **1분봉 재합산 vs 15분봉 `candle_delta_15m` 상관계수**: **$\rho = 1.000000$** (덧셈 결합법칙에 의한 수학적 항등 입증)
-   - **진입 타점 알파 검정 (1,000회 동일 실행 모델 랜덤 대조군)**:
-     - 전략 Gross PnL **`+$19.64`** (Net `-$487.42`) vs 랜덤 대조군 평균 Net **`-$847.46`**
-     - **순열 검정 `p = 0.01398` ($p < 0.05$ 통과!)** $\rightarrow$ 진입 타점 자체는 무작위가 아닌 유의미한 알파가 있음이 입증됨!
-   - **실패 원인 (비용 잠식 병목)**:
-     - `TP1_AND_TP2_Z_REVERT` (109건): Net **`+$806.21`**
-     - `TP1_THEN_BREAKEVEN` (20건): Net **`+$26.98`**
-     - `STOP_LOSS` (214건): Gross `-$996.65`, Net **`-$1,319.30`**
-     - 15분봉 평균 스탑 거리(`0.83%`) 대비 왕복 시장가 비용(`0.25%`)이 리스크 예산의 30%를 잠식하여 **총 거래비용 `$507.06`** 발생 $\rightarrow$ 최종 판정 `REJECT_HYPOTHESIS (W2 PASS / W1 FAIL)`.
+1. **Stage 0 (`engines/world_monitor_radar.py`) — 🌍 WorldMonitor Real-Time Global Intelligence & Strategy Selector**:
+   - Pulls live global macro/geopolitical/crypto headlines via RSS (Yahoo Finance S&P500/DXY/Gold/BTC, CoinDesk, Cointelegraph).
+   - Pulls **3-Tier Sentiment**:
+     - Daily `Alternative.me` Fear & Greed Index (with yesterday-vs-today delta)
+     - Real-Time Intraday Sentiment (`0-100`, computed every 15m from 10-coin market breadth & BTC 24h momentum)
+     - Live Binance Futures Retail (`globalLongShortAccountRatio`) vs Whale (`topLongShortPositionRatio`) Long/Short Ratios
+   - Pulls Cross-Asset Safe-Haven Flow (`PAXGUSDT` 24h return vs `BTCUSDT` 24h return).
+   - Outputs `WorldMonitorVerdict` (`allow_long`, `allow_short`, `risk_multiplier`, `recommended_strategy_family`).
+2. **Stage 1 (`tests/test_w2_and_leakage.py`) — 🛡️ W2 Deterministic Risk & Leakage Gate (7/7 Unit Tests PASS)**:
+   - Verifies 2-tier cost model (`0.10%` fee + `0.04%/0.15%` slippage + 8h funding), `shift(1)` zero look-ahead leakage, `1.0%` per-trade risk cap, `-2.0%` daily loss Kill Switch, Fail-Closed order adapter, shared random execution model, and Round 3 Unified Config + `clientOrderId` idempotency + Exchange-First Reconciliation.
+3. **Stage 2 (`engines/position_manager.py` & `user_trading_rules.json`) — 💼 Exchange-First Reconciliation & Wonyotti Isolated Position Lifecycle Manager**:
+   - Queries Binance `/fapi/v2/positionRisk` and `/fapi/v1/openOrders` as the single Source of Truth (`reconcile_exchange_vs_db`). Any mismatch with local SQLite `active_positions` or missing `STOP_MARKET` protection trips `reconciliation_halted = True` (`Fail-Closed`).
+   - Enforces Unified W2 Slot Rules: Max `3` concurrent isolated slots (`20%` slot margin = `$200`, max `0.333x` notional per slot so total gross leverage `<= 1.0x`), `-2.5%` max stop distance ceiling (`<= $10` max loss per trade), and `+1.8%` 1st Partial Take-Profit (`50%` scale-out + automatic Break-Even Stop move).
+4. **Stage 3 (`engines/regime_switcher.py`) — 🌤️ 3-Axis Market Regime Switcher & Strategy Lab**:
+   - Classifies every coin along Trend (`EMA 20/50/200`, `ADX 14`), Volatility (`192h NATR percentile rank`), and Breadth/Flow (`200MA breadth`, `Satoshi relative strength vs BTC`, `3-bar Volume Cluster`).
+   - 360-Day Real Binance Backtest Summary:
+     - `1_blind_mean_reversion`: 603 trades, Net `-$588.26`, MDD `60.56%`
+     - `2_blind_trend_breakout`: 236 trades, Net `-$72.47`, MDD `24.85%`
+     - `3_regime_switched_multi_strategy`: 117 trades, Net `+$136.08`, `Gross/Cost = 3.09x`, MDD `18.06%`
+     - `4_wonyotti_grid_regime_hybrid` (Wonyotti Multi-Candle Volume Cluster + Satoshi Coupling): **97 trades, Win Rate `41.2%`, Gross `+$349.88`, Cost `$72.43`, Net `+$277.45 (+27.7%)`, `Gross/Cost = 4.83x`, MDD `12.74% (<= 15% Gate PASS)`, Sharpe `0.96`**.
+5. **Stage 4 & 5 (`engines/eggbot_auditor.py` & `engines/binance_testnet_client.py`) — ⚖️ Pre-Trade Audit Log & 3-Leg Idempotent Testnet Bracket Execution**:
+   - Generates Korean Multi-Persona Debate Logs (`[리서치 봇 Hatcha]`, `[찬성 봇 Bull/Trend]`, `[비판 봇 Dr.Eggbot]`, `[최종 심판 결정]`).
+   - Submits 3-Leg Bracket Orders (`MARKET` Entry + `STOP_MARKET` `closePosition=true` + 50% `TAKE_PROFIT_MARKET` `reduceOnly=true`) under `ISOLATED` margin with deterministic `newClientOrderId = QSTACK_{trade_id}_{ENTRY|SL|TP1}` and post-condition verification.
+6. **Stage 6 (`engines/crumb_memory.py`, `reports/qstack_dashboard.html`, `reports/latest_discord_briefing.md`) — 🍞 Crumb SQLite Memory, Korean Traffic-Light Dashboard & Discord/Hermes Briefing**:
+   - Saves all state to `data/crumb_memory.db`, renders the Korean 6-Panel Dashboard, and outputs/sends the Discord Markdown briefing.
 
 ---
 
-## 4. Phase 1.5 (Candidate A vs B) 및 별도 연구 (Candidate C: 잔차 모멘텀) 실증 완료 (`reports/phase1_5_diagnostic.json`, `reports/candidate_c_momentum_360d.json`)
+## 2. Quick Commands (Home PC or Oracle Cloud Server)
 
-3차 위원회 회의(Codex, Claude, Opgo)의 결정에 따라 **평균회귀 가설군(A: 1h 격상, B: Maker 100%/50%/0% 역선택 시나리오)**과 **별도 분리된 추세/모멘텀 가설군(C: 1h 잔차 모멘텀 + 거래량 폭발 돌파)**을 실제로 검증 완료했습니다.
+```bash
+# 1. Run 1 full autonomous cycle + print Discord briefing
+python qstack_cli.py cycle
 
-1. **평균회귀 가설군 (`Candidate A` & `Candidate B`) $\rightarrow$ `0개 통과 (가설군 공식 종결!)`**
-   - `1분봉 마지막 3분 반전 검증 (assert_1m_path_reversal)`: 15분봉 전체 Delta와 마지막 3분 Delta의 부호 일치율은 `65.97%`에 불과(34%는 봉 막판 수급 방향이 달랐음).
-   - `Candidate A (1h 평균회귀)`: 75건, Gross `+$3.06`, Cost `$103.42`, **Net `-$100.35` (`Gross/Cost = 0.03` $\ll 5.0$ $\rightarrow$ 탈락)**.
-   - `Candidate B (15m Maker 평균회귀)`:
-     - `100% 체결(낙관)`: Gross `+$19.64`, Cost `$89.96`, **Net `-$70.32` (`Gross/Cost = 0.22` $\rightarrow$ 탈락)**.
-     - `50% 체결(역선택: 손절 100% 체결 / 익절 50% 체결)`: Gross `-$428.20`, **Net `-$505.29` (대참사 $\rightarrow$ 탈락)**.
-     - `0% 체결(Taker 회귀)`: **Net `-$487.42` (탈락)**.
-   - **결론**: 위원회의 사전 종료 규칙(*"IS 게이트 통과자 0개면 가설군 전체 종결"*)에 따라, **"크립토 선물 단기 잔차 극단치 역추세(Mean-Reversion)" 가설군은 전진 Holdout을 기다릴 필요 없이 즉시 폐기(Terminated) 확정!**
+# 2. Print latest Discord briefing only
+python qstack_cli.py briefing
 
-2. **별도 분리 연구 (`Candidate C`: 1h 잔차 모멘텀 + 거래량 폭발 추세 돌파) $\rightarrow$ `유일하게 비용 후 순수익(+) 및 미관측 Holdout 흑자 달성!`**
-   - **왜 평균회귀는 죽고 모멘텀은 살았는가?**: 코인 선물에서 비트코인 대비 강한 상대강도(`rel_strength_24 > +2%`)와 거래량 폭발(`1.8x`), 오더플로우(`delta_ratio > +0.12`)를 동반한 48시간 신고가/신저가 돌파는 평균으로 회귀하지 않고 **추세로 달리는 특성**이 있음(첫 번째 유튜브 영상의 19년차 퀀트가 말한 *"전통적인 추세추종 알고리즘이 가장 안정적이고 우수하다"*는 결론과 100% 일치!).
-   - **최근 180일 (Discovery IS)**:
-     - 73건 | Gross **`+$142.16`** | Cost **`$38.78`** | **Net `+$103.38` (+10.34%)** | **`Gross/Cost = 3.67` (`Net/Cost = 2.67 >= 1.50` 통과!)** | **MDD `10.29%` ($\le 15\%$ 통과!)** | Sharpe `0.83`
-   - **미관측 과거 180일 (Untouched Prior Holdout, `Day -360 ~ Day -181`)**:
-     - 한 번도 열람하지 않은 과거 6개월 구간에서도 Gross **`+$67.99`** | Cost **`$44.28`** | **Net `+$23.70` (비용 차감 후 순수익 흑자 유지!)** | **MDD `14.39%` ($\le 15\%$ 통과!)**
-   - **360일(1년) 전체 합산**:
-     - 160건 | Gross **`+$206.34`** | Cost **`$84.39`** | **Net `+$121.95` (+12.20%)** | `Gross/Cost = 2.44` (`Net/Cost = 1.44`) | MDD `15.26%`
+# 3. Generate role-locked prompt + live data for Hermes Discord Worker Bots
+python qstack_cli.py worker-prompt --role research
+python qstack_cli.py worker-prompt --role critic
+python qstack_cli.py worker-prompt --role judge
 
-## 5. 집 컴퓨터에서 이어서 할 다음 작업
-- 평균회귀(A, B)를 공식 폐기 처리하고, 실제 수익성이 확인된 **`Candidate C (추세/잔차 모멘텀 돌파)`**를 새 Phase 1 주력 가설로 사전등록하여 유니버스 확장(또는 24개월 표본 300건 확보) 및 실시간 Paper Trading/대시보드 연결로 진입.
+# 4. Run 24/7 daemon (every 15m) + Web Dashboard on port 8080 + Live Testnet orders
+python run_full_cycle.py --daemon --port 8080 --live-testnet
+```
