@@ -1,27 +1,27 @@
-# 🏛️ [Q-Stack 24/7 정례 브리핑 & AI 위원회 회의록] (2026-10-23 05:56 UTC)
+# 🏛️ [Q-Stack 24/7 정례 브리핑 & AI 위원회 회의록] (2026-10-23 06:07 UTC)
 
 ## 1. 🌤️ 현재 3축 시장 장세 판독 (Weather Radar)
 - **지배적 추세**: `TRENDING_DOWN` | **변동성**: `NORMAL / COMPRESSED`
 - **시장 폭 (200MA 상회 비율)**: `30%` | **BTC 24h**: `-1.24%`
 - **자동 선택된 전략 모드**: **`TREND_BREAKOUT_SHORT`**
-- **테스트넷 계좌 상태**: `SHADOW_DRY_RUN (No .env Testnet Key Yet)` | 가용 잔고: **`$1,000.00 USDT`**
+- **테스트넷 계좌 상태**: `SHADOW_DRY_RUN (모의 시뮬레이션 모드 - .env 키 입력 시 실전 테스트넷 전환)` | 가용 잔고: **`$1,000.00 USDT`**
 
 ## 2. ⚖️ 상위 주목 종목 AI 위원회 찬반 회의록 (Autonomous Debate Log)
 ### [1] LTCUSDT (SHORT 검토 | 배정 전략: `TREND_BREAKOUT_SHORT`)
 - [리서치 봇 Hatcha] LTCUSDT 현재가 $59.3400 (24h -2.18%, BTC 대비 상대강도 -0.94%). 장세=TRENDING_DOWN/NORMAL, ADX=56.1, RSI=50, 수급 Delta=-0.24, 펀딩비=-0.0043%.
-- [찬성 봇 Bull/Trend] 현재 배정 전략은 `TREND_BREAKOUT_SHORT`입니다. SHORT 방향 진입 시 손절폭 1.94%($60.4906), 비용 대비 기대수익비 30.5배로 손익비가 우수합니다.
+- [찬성 봇 Bull/Trend] 배정 전략: `TREND_BREAKOUT_SHORT` (SHORT). 워뇨띠 1/5 슬롯(격리 증거금 $200) | 진입가 $59.3400 | 1차 50% 분할익절가 $58.2719 (+1.8%) | 칼손절가 $60.3860 (-1.76%, 최대손실 -$10.00).
 - [비판 봇 Dr.Eggbot] 반론 점검: No fatal cross-asset or funding contradictions detected; standard stop-loss applies. | 돌파/밴드 타점 도달 완료!
-- **최종 심판 결정**: ✅ [최종 승인 - 즉시 주문 집행] 타점 도달 및 리스크 감사 통과! 456.83 USDT (0.46x) 주문 전송.
+- **최종 심판 결정**: ✅ [최종 승인 - 3단 분할주문 집행] 격리(ISOLATED) 567.30 USDT (슬롯배율 2.84x) 진입 + 1차 50% 익절($58.2719) + 칼손절($60.3860) 동시 전송!
 
 ### [2] ADAUSDT (SHORT 검토 | 배정 전략: `TREND_BREAKOUT_SHORT`)
 - [리서치 봇 Hatcha] ADAUSDT 현재가 $0.2159 (24h -2.04%, BTC 대비 상대강도 -0.81%). 장세=TRENDING_DOWN/NORMAL, ADX=56.6, RSI=46, 수급 Delta=+0.14, 펀딩비=-0.0090%.
-- [찬성 봇 Bull/Trend] 현재 배정 전략은 `TREND_BREAKOUT_SHORT`입니다. SHORT 방향 진입 시 손절폭 2.30%($0.2209), 비용 대비 기대수익비 36.2배로 손익비가 우수합니다.
+- [찬성 봇 Bull/Trend] 배정 전략: `TREND_BREAKOUT_SHORT` (SHORT). 워뇨띠 1/5 슬롯(격리 증거금 $200) | 진입가 $0.2159 | 1차 50% 분할익절가 $0.2120 (+1.8%) | 칼손절가 $0.2204 (-2.09%, 최대손실 -$10.00).
 - [비판 봇 Dr.Eggbot] 반론 점검: No fatal cross-asset or funding contradictions detected; standard stop-loss applies. | 아직 48h 돌파선/밴드 상하단 타점에 완전히 닿지 않음(대기 필요).
 - **최종 심판 결정**: ⏸️ [관망/기각 (ABSTAIN)] 타점 미도달(대기) 사유로 진입 보류.
 
 ### [3] AVAXUSDT (LONG 검토 | 배정 전략: `TREND_BREAKOUT_SHORT`)
 - [리서치 봇 Hatcha] AVAXUSDT 현재가 $9.2570 (24h -1.16%, BTC 대비 상대강도 +0.07%). 장세=TRENDING_DOWN/COMPRESSED, ADX=54.8, RSI=53, 수급 Delta=-0.05, 펀딩비=-0.0049%.
-- [찬성 봇 Bull/Trend] 현재 배정 전략은 `TREND_BREAKOUT_SHORT`입니다. LONG 방향 진입 시 손절폭 1.96%($9.0754), 비용 대비 기대수익비 30.8배로 손익비가 우수합니다.
+- [찬성 봇 Bull/Trend] 배정 전략: `TREND_BREAKOUT_SHORT` (LONG). 워뇨띠 1/5 슬롯(격리 증거금 $200) | 진입가 $9.2570 | 1차 50% 분할익절가 $9.4236 (+1.8%) | 칼손절가 $9.0919 (-1.78%, 최대손실 -$10.00).
 - [비판 봇 Dr.Eggbot] 반론 점검: BREADTH_DIVERGENCE: Attempting LONG breakout while only 30% of universe is above 200-MA. | 아직 48h 돌파선/밴드 상하단 타점에 완전히 닿지 않음(대기 필요).
 - **최종 심판 결정**: ⏸️ [관망/기각 (ABSTAIN)] 타점 미도달(대기) 사유로 진입 보류.
 

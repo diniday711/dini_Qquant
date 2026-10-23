@@ -1,0 +1,17 @@
+{
+  "profile_name": "Wonyotti_5Slot_Isolated_Hybrid",
+  "initial_capital_usdt": 1000.0,
+  "margin_mode": "ISOLATED",
+  "max_concurrent_slots": 5,
+  "slot_allocation_pct": 0.20,
+  "max_leverage": 5,
+  "stop_loss_mode": "HYBRID_ATR_CAPPED",
+  "min_stop_distance_pct": 0.008,
+  "max_stop_distance_pct": 0.025,
+  "atr_stop_multiplier": 2.0,
+  "take_profit_mode": "SPLIT_50_BREAKEVEN_TRAIL",
+  "partial_tp_target_pct": 0.018,
+  "partial_tp_ratio": 0.50,
+  "max_hold_hours": 48,
+  "daily_kill_switch_loss_pct": 0.03
+}

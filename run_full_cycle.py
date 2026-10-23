@@ -31,6 +31,7 @@ from engines.cost_model import CostModel
 from engines.crumb_memory import CrumbMemoryDB
 from engines.data_fetcher import BinanceDataFetcher
 from engines.eggbot_auditor import DrEggbotAuditor
+from engines.position_manager import PositionLifecycleManager
 from engines.regime_switcher import compute_adx_causal, run_regime_switching_study
 from engines.risk_engine import DeterministicRiskEngine
 from run_phase1 import run_w2_unit_tests
@@ -186,8 +187,16 @@ def build_autonomous_debate_and_regime_scan(
                 sub_strat = "MEAN_REV"
                 is_exact_trigger = True
 
-        stop_dist = max(0.015, (2.2 * atr_val) / close_px)
-        stop_px = close_px * (1.0 - stop_dist) if cand_side == 1 else close_px * (1.0 + stop_dist)
+        pos_mgr = PositionLifecycleManager("data/crumb_memory.db")
+        slot_plan = pos_mgr.compute_wonyotti_slot_order_plan(
+            equity_usdt=risk_engine.equity,
+            entry_price=close_px,
+            atr_val=atr_val,
+            side_int=cand_side,
+        )
+        stop_dist = slot_plan["stop_dist_pct"]
+        stop_px = slot_plan["stop_price"]
+        tp1_px = slot_plan["tp1_price"]
         expected_rr_cost = (stop_dist * 2.2) / 0.0014
 
         audit = eggbot.audit_candidate_signal(
@@ -219,16 +228,18 @@ def build_autonomous_debate_and_regime_scan(
             f"수급 Delta={delta_r:+.2f}, 펀딩비={latest_funding:.4%}."
         )
         pro_opinion = (
-            f"[찬성 봇 Bull/Trend] 현재 배정 전략은 `{strategy_fit}`입니다. "
-            f"{'LONG' if cand_side==1 else 'SHORT'} 방향 진입 시 손절폭 {stop_dist:.2%}(${stop_px:,.4f}), "
-            f"비용 대비 기대수익비 {expected_rr_cost:.1f}배로 손익비가 우수합니다."
+            f"[찬성 봇 Bull/Trend] 배정 전략: `{strategy_fit}` ({'LONG' if cand_side==1 else 'SHORT'}). "
+            f"워뇨띠 1/5 슬롯(격리 증거금 ${slot_plan['slot_margin_usd']:,.0f}) | 진입가 ${close_px:,.4f} | "
+            f"1차 50% 분할익절가 ${tp1_px:,.4f} (+{slot_plan['tp1_pct']:.1%}) | "
+            f"칼손절가 ${stop_px:,.4f} (-{stop_dist:.2%}, 최대손실 -${slot_plan['max_loss_usd']:,.2f})."
         )
         con_opinion = (
             f"[비판 봇 Dr.Eggbot] 반론 점검: {'; '.join(audit.bear_case_challenges)} | "
             f"{'돌파/밴드 타점 도달 완료!' if is_exact_trigger else '아직 48h 돌파선/밴드 상하단 타점에 완전히 닿지 않음(대기 필요).'}"
         )
         cio_decision = (
-            f"✅ [최종 승인 - 즉시 주문 집행] 타점 도달 및 리스크 감사 통과! {sizing.notional_usd:,.2f} USDT ({sizing.effective_leverage:.2f}x) 주문 전송."
+            f"✅ [최종 승인 - 3단 분할주문 집행] 격리(ISOLATED) {slot_plan['notional_usd']:,.2f} USDT (슬롯배율 {slot_plan['slot_leverage']:.2f}x) 진입 + "
+            f"1차 50% 익절(${tp1_px:,.4f}) + 칼손절(${stop_px:,.4f}) 동시 전송!"
             if final_approved
             else f"⏸️ [관망/기각 (ABSTAIN)] {'타점 미도달(대기)' if not is_exact_trigger else audit.verdict_code} 사유로 진입 보류."
         )
@@ -243,9 +254,13 @@ def build_autonomous_debate_and_regime_scan(
                 "is_exact_trigger": is_exact_trigger,
                 "entry_price": close_px,
                 "stop_price": stop_px,
-                "notional_usd": sizing.notional_usd,
-                "quantity": sizing.quantity,
-                "leverage": sizing.effective_leverage,
+                "tp1_price": tp1_px,
+                "slot_margin_usd": slot_plan["slot_margin_usd"],
+                "notional_usd": slot_plan["notional_usd"],
+                "quantity": slot_plan["quantity"],
+                "partial_tp_qty": slot_plan["partial_tp_qty"],
+                "leverage": slot_plan["slot_leverage"],
+                "slot_plan": slot_plan,
                 "eggbot_approved": final_approved,
                 "eggbot_verdict": "APPROVED_EXECUTE" if final_approved else "ABSTAIN_WAIT",
                 "research_note": research_note,
@@ -455,6 +470,26 @@ def generate_6panel_dashboard_html(
         </div>
         """
 
+    pos_mgr_view = PositionLifecycleManager("data/crumb_memory.db")
+    active_positions = pos_mgr_view.get_active_positions()
+    active_pos_rows = ""
+    if active_positions:
+        for ap in active_positions:
+            tp_status = "✅ 1차 50% 익절완료 (본절잠금)" if int(ap["tp1_hit"]) == 1 else f"대기 (${ap['tp1_price']:,.4f})"
+            active_pos_rows += f"""
+            <tr style="background:#1c2d24;">
+              <td><strong>{ap['symbol']}</strong> ({ap['side']})</td>
+              <td><code>{ap['margin_mode']}</code> (${ap['slot_margin_usd']:,.0f} 슬롯 / {ap['leverage']:.2f}배)</td>
+              <td>${ap['entry_price']:,.4f}</td>
+              <td style="color:#3fb950;">{tp_status}</td>
+              <td style="color:#f85149;">${ap['stop_price']:,.4f}</td>
+              <td>${ap['notional_usd']:,.2f}</td>
+              <td><strong>${ap['unrealized_pnl_usd']:+,.2f}</strong> (확정: ${ap['realized_pnl_usd']:+,.2f})</td>
+            </tr>
+            """
+    else:
+        active_pos_rows = '<tr><td colspan="7" style="text-align:center;color:#8b949e;">현재 보유 중인 포지션이 없습니다 (5개 슬롯 모두 대기 중)</td></tr>'
+
     trade_rows_html = ""
     for tr in recent_trades[:8]:
         trade_rows_html += f"""
@@ -558,14 +593,21 @@ def generate_6panel_dashboard_html(
 
     <!-- PANEL 05: POTATO-SHIELD RISK & BINANCE TESTNET TERMINAL -->
     <div class="panel">
-      <h2>③ 🛡️ 내 돈 지킴이 안전벨트 (W2 방패) &amp; 바이낸스 계좌 상태</h2>
+      <h2>③ 🛡️ 내 투자 규칙 (`user_trading_rules.json`) &amp; 실시간 5분할 격리 포지션 현황</h2>
       <div class="kpi-bar">
-        <div class="kpi"><div class="kpi-title">현재 계좌 연결 모드</div><div class="kpi-val" style="font-size:13px;color:#58a6ff;">{testnet_balance['mode']}</div></div>
         <div class="kpi"><div class="kpi-title">계좌 가용 잔고</div><div class="kpi-val">${testnet_balance['available_balance_usdt']:,.2f} USDT</div></div>
-        <div class="kpi"><div class="kpi-title">바이낸스 서버 통신 속도</div><div class="kpi-val">{testnet_ping.get('latency_ms', -1)} ms</div></div>
+        <div class="kpi"><div class="kpi-title">워뇨띠 5분할 격리 슬롯</div><div class="kpi-val" style="color:#3fb950;">{len(active_positions)} / 5 슬롯 사용중</div></div>
+        <div class="kpi"><div class="kpi-title">바이낸스 통신 속도</div><div class="kpi-val">{testnet_ping.get('latency_ms', -1)} ms</div></div>
       </div>
-      <p style="font-size:13px;margin:6px 0;"><strong>절대 깨지지 않는 안전 규칙 (코드 강제):</strong> 1회 최대 손실 = <code>내 시드의 1.0% ($10)</code> | 하루 손실 한도(킬스위치) = <code>-2.0% ($20)</code> | 최대 레버리지 상한 = <code>5.0배</code></p>
-      <h3 style="margin-top:14px;font-size:14px;">📋 최근 봇이 결정한 주문 내역 (자동 장부)</h3>
+      <div style="font-size:12.5px;background:#0d1117;padding:8px 10px;border-radius:6px;margin-bottom:10px;border-left:3px solid #3fb950;">
+        <strong>📌 내 설정 규칙:</strong> ① 시드 5등분 격리(슬롯당 20% = <code>$200</code>, 최대 5배) | ② 손절가: <code>ATR 자동 (최대 -2.5% 칼손절 천장)</code> | ③ 익절가: <code>+1.8% 도달 시 50% 분할익절 + 나머지 50% 본절잠금</code> | ④ 일일 킬스위치: <code>하루 -3.0% 손실 시 매매 중단</code>
+      </div>
+      <h3 style="margin-top:10px;font-size:13.5px;color:#3fb950;">🔥 현재 보유 중인 실시간 포지션 (자동 익절·본절잠금·손절 감시 중)</h3>
+      <table>
+        <tr><th>코인 (방향)</th><th>격리 슬롯 (배율)</th><th>진입 단가</th><th>1차 50% 익절가 (+1.8%)</th><th>현재 칼손절 단가</th><th>총 포지션 규모</th><th>실시간 손익</th></tr>
+        {active_pos_rows}
+      </table>
+      <h3 style="margin-top:14px;font-size:13.5px;">📋 최근 봇이 결정한 주문 내역 (자동 장부)</h3>
       <table>
         <tr><th>시간</th><th>코인 (방향)</th><th>사용한 무기</th><th>진입가</th><th>자동 손절가</th><th>투입 금액 (배율)</th><th>심판 판정</th><th>주문 상태</th></tr>
         {trade_rows_html}
@@ -694,6 +736,18 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
         coin_regimes=regime_scan["coin_regimes"],
     )
 
+    pos_mgr = PositionLifecycleManager("data/crumb_memory.db")
+    latest_prices_map = {c["symbol"]: float(c["price"]) for c in regime_scan["coin_regimes"]}
+    coin_regimes_map = {c["symbol"]: str(c["trend_regime"]) for c in regime_scan["coin_regimes"]}
+    lifecycle_events = pos_mgr.sync_and_manage_positions(
+        latest_prices=latest_prices_map,
+        coin_regimes_map=coin_regimes_map,
+        testnet_client=testnet_client,
+        execute_on_testnet=execute_on_testnet,
+    )
+    for ev in lifecycle_events:
+        print(f"  -> [Position Lifecycle] {ev}")
+
     for sig in regime_scan["actionable_signals"][:3]:
         if sig["eggbot_approved"]:
             ord_res = testnet_client.place_testnet_bracket_order(
@@ -701,11 +755,21 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
                 side=sig["side_int"],
                 quantity=sig["quantity"],
                 stop_price=sig["stop_price"],
+                tp1_price=sig["tp1_price"],
+                partial_tp_ratio=0.50,
                 leverage=int(max(1, round(sig["leverage"]))),
                 execute_on_testnet=execute_on_testnet,
             )
             order_status = ord_res["status"]
             order_id = ord_res["order_id"]
+            pos_mgr.open_or_record_position(
+                symbol=sig["symbol"],
+                side=sig["side"],
+                side_int=sig["side_int"],
+                sub_strategy=sig["sub_strategy"],
+                plan=sig["slot_plan"],
+                entry_price=sig["entry_price"],
+            )
         else:
             order_status = "WAIT_FOR_TRIGGER"
             order_id = "NONE"
