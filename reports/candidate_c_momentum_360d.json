@@ -1,0 +1,35 @@
+{
+  "untouched_prior_180d_holdout": {
+    "trades": 86,
+    "gross_pnl_usd": 67.98552588457805,
+    "total_cost_usd": 44.28077167073078,
+    "net_pnl_usd": 23.704754213847263,
+    "gross_to_cost_ratio": 1.5353283901670558,
+    "net_to_cost_ratio": 0.5353283901670555,
+    "sharpe": 0.18257696234467258,
+    "mdd_pct": 0.14387315959378977,
+    "win_rate": 0.32558139534883723
+  },
+  "discovery_recent_180d": {
+    "trades": 73,
+    "gross_pnl_usd": 142.15752344864043,
+    "total_cost_usd": 38.78175449792278,
+    "net_pnl_usd": 103.37576895071761,
+    "gross_to_cost_ratio": 3.6655774162113945,
+    "net_to_cost_ratio": 2.6655774162113937,
+    "sharpe": 0.8268876194657934,
+    "mdd_pct": 0.10292042537858925,
+    "win_rate": 0.3698630136986301
+  },
+  "full_360d_combined": {
+    "trades": 160,
+    "gross_pnl_usd": 206.33960691582797,
+    "total_cost_usd": 84.39257733448143,
+    "net_pnl_usd": 121.94702958134647,
+    "gross_to_cost_ratio": 2.4449971008471736,
+    "net_to_cost_ratio": 1.4449971008471725,
+    "sharpe": 0.46499845100723874,
+    "mdd_pct": 0.15256266481996017,
+    "win_rate": 0.34375
+  }
+}

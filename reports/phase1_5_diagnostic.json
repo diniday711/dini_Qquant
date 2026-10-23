@@ -1,0 +1,70 @@
+{
+  "registration_sha256": "e82c306228b44c66",
+  "intrabar_1m_path_check": {
+    "symbol": "SOLUSDT",
+    "bars_checked": 288,
+    "full15m_vs_last3m_sign_agreement": 0.6597222222222222
+  },
+  "candidate_A_1h_taker": {
+    "trades": 75,
+    "gross_pnl_usd": 3.0645427045699254,
+    "total_cost_usd": 103.41711479022311,
+    "net_pnl_usd": -100.35257208565321,
+    "per_trade_gross_usd": 0.040860569394265675,
+    "per_trade_cost_usd": 1.3788948638696414,
+    "gross_to_cost_ratio": 0.029632838924062137,
+    "net_to_cost_ratio": -0.9703671610759381,
+    "mdd_pct": 0.1829964709689652,
+    "sharpe": -1.5624881029856477
+  },
+  "candidate_B_15m_maker_scenarios": {
+    "fill_100pct": {
+      "trades": 346,
+      "gross_pnl_usd": 19.642057568550932,
+      "total_cost_usd": 89.96251975875857,
+      "net_pnl_usd": -70.32046219020765,
+      "per_trade_gross_usd": 0.05676895251026281,
+      "per_trade_cost_usd": 0.2600072825397647,
+      "gross_to_cost_ratio": 0.21833600949842916,
+      "net_to_cost_ratio": -0.781663990501571,
+      "mdd_pct": 0.1261843991699949,
+      "sharpe": -0.7508238833450567
+    },
+    "fill_50pct": {
+      "trades": 289,
+      "gross_pnl_usd": -428.20224662030824,
+      "total_cost_usd": 77.09129031397043,
+      "net_pnl_usd": -505.2935369342787,
+      "per_trade_gross_usd": -1.4816686734266722,
+      "per_trade_cost_usd": 0.2667518695985136,
+      "gross_to_cost_ratio": -5.554482807024826,
+      "net_to_cost_ratio": -6.554482807024826,
+      "mdd_pct": 0.5134926778719966,
+      "sharpe": -6.382978798578509
+    },
+    "fill_0pct": {
+      "trades": 346,
+      "gross_pnl_usd": 19.642057568550932,
+      "total_cost_usd": 507.06170336165854,
+      "net_pnl_usd": -487.41964579310775,
+      "per_trade_gross_usd": 0.05676895251026281,
+      "per_trade_cost_usd": 1.4654962524903425,
+      "gross_to_cost_ratio": 0.03873701649785482,
+      "net_to_cost_ratio": -0.9612629835021455,
+      "mdd_pct": 0.4901918235210255,
+      "sharpe": -5.09209505470068
+    }
+  },
+  "combined_A_1h_plus_maker_50pct_adverse": {
+    "trades": 57,
+    "gross_pnl_usd": -178.4491130172957,
+    "total_cost_usd": 12.969425437910932,
+    "net_pnl_usd": -191.41853845520666,
+    "per_trade_gross_usd": -3.1306861932858894,
+    "per_trade_cost_usd": 0.22753377961247248,
+    "gross_to_cost_ratio": -13.759214999275994,
+    "net_to_cost_ratio": -14.759214999275995,
+    "mdd_pct": 0.20354828126545021,
+    "sharpe": -3.635483249146856
+  }
+}
