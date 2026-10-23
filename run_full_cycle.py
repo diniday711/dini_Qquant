@@ -34,6 +34,7 @@ from engines.eggbot_auditor import DrEggbotAuditor
 from engines.position_manager import PositionLifecycleManager
 from engines.regime_switcher import compute_adx_causal, run_regime_switching_study
 from engines.risk_engine import DeterministicRiskEngine
+from engines.world_monitor_radar import WorldMonitorRadar
 from run_phase1 import run_w2_unit_tests
 
 
@@ -54,6 +55,10 @@ def build_autonomous_debate_and_regime_scan(
         ma200 = float(s_close.rolling(200).mean().iloc[-1])
         above_200_flags.append(1.0 if float(s_close.iloc[-1]) > ma200 else 0.0)
     breadth_pct = float(np.mean(above_200_flags)) if above_200_flags else 0.5
+
+    # Run WorldMonitor Global Intelligence, Macro Cross-Asset & Sentiment Radar FIRST
+    world_radar = WorldMonitorRadar()
+    world_verdict = world_radar.evaluate_world_state(btc_ret_24, breadth_pct)
 
     coin_rows: List[Dict[str, Any]] = []
     debate_logs: List[Dict[str, Any]] = []
@@ -219,9 +224,14 @@ def build_autonomous_debate_and_regime_scan(
             utc_date_str=utc_today,
         )
 
-        # Committee Round 3 Rule: Order gating is 100% deterministic (Trigger + W2 Sizing);
-        # Dr. Eggbot acts strictly as a Pre-Trade Bear-Case Audit Log (not a discretionary LLM gate).
-        final_approved = bool(is_exact_trigger and sizing.approved and audit.approved)
+        # Committee Round 3 + WorldMonitor Rule:
+        # Order gating combines WorldMonitor Global Context (`allow_long`/`allow_short`/`risk_multiplier > 0`)
+        # + 3-Axis Chart Trigger + W2 Sizing.
+        world_dir_allowed = (
+            (cand_side == 1 and world_verdict.allow_long)
+            or (cand_side == -1 and world_verdict.allow_short)
+        ) and (world_verdict.risk_multiplier > 0.0)
+        final_approved = bool(is_exact_trigger and sizing.approved and audit.approved and world_dir_allowed)
 
         # Build Korean Multi-Persona Debate Log (회의록)
         research_note = (
@@ -328,9 +338,24 @@ def build_autonomous_debate_and_regime_scan(
         "risk_appetite": dom_risk,
         "market_breadth_pct": breadth_pct,
         "btc_24h_return_pct": btc_ret_24,
-        "active_strategy_mode": active_mode,
+        "active_strategy_mode": world_verdict.recommended_strategy_family,
         "confidence_score": 78,
         "what_could_be_wrong": global_wrong_about,
+        "world_monitor": {
+            "global_regime_code": world_verdict.global_regime_code,
+            "recommended_strategy_family": world_verdict.recommended_strategy_family,
+            "fear_greed_value": world_verdict.fear_greed_value,
+            "fear_greed_label": world_verdict.fear_greed_label,
+            "gold_24h_return_pct": world_verdict.gold_24h_return_pct,
+            "safe_haven_divergence_pct": world_verdict.safe_haven_divergence_pct,
+            "shock_score": world_verdict.shock_score,
+            "macro_event_score": world_verdict.macro_event_score,
+            "bullish_score": world_verdict.bullish_score,
+            "allow_long": world_verdict.allow_long,
+            "allow_short": world_verdict.allow_short,
+            "korean_summary": world_verdict.korean_summary,
+            "top_headlines": world_verdict.top_headlines,
+        },
         "coin_regimes": coin_rows,
         "actionable_signals": debate_logs[:5],  # Top 5 debated coins always shown in Meeting Room!
     }
@@ -349,18 +374,30 @@ def write_hermes_discord_briefing(
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     sw = strategy_comparison.get("3_regime_switched_multi_strategy", {})
     wy = strategy_comparison.get("4_wonyotti_grid_regime_hybrid", {})
+    wm = regime_scan.get("world_monitor", {})
 
     lines = [
         f"# 🏛️ [Q-Stack 24/7 정례 브리핑 & AI 위원회 회의록] ({now_str})",
         "",
-        "## 1. 🌤️ 현재 3축 시장 장세 판독 (Weather Radar)",
-        f"- **지배적 추세**: `{regime_scan['dominant_trend_regime']}` | **변동성**: `{regime_scan['volatility_state']}`",
-        f"- **시장 폭 (200MA 상회 비율)**: `{regime_scan['market_breadth_pct']:.0%}` | **BTC 24h**: `{regime_scan['btc_24h_return_pct']:+.2%}`",
-        f"- **자동 선택된 전략 모드**: **`{regime_scan['active_strategy_mode']}`**",
-        f"- **테스트넷 계좌 상태**: `{testnet_balance['mode']}` | 가용 잔고: **`${testnet_balance['available_balance_usdt']:,.2f} USDT`**",
-        "",
-        "## 2. ⚖️ 상위 주목 종목 AI 위원회 찬반 회의록 (Autonomous Debate Log)",
+        "## 0. 🌍 WorldMonitor 실시간 세계 정세·거시·뉴스 레이더 (전략 선택 근거)",
+        f"- **글로벌 정세 종합 판독**: {wm.get('korean_summary', '')}",
+        f"- **공포·탐욕 지수**: `{wm.get('fear_greed_value', 50)} ({wm.get('fear_greed_label', 'Neutral')})` | **금(PAXG) 24h**: `{wm.get('gold_24h_return_pct', 0.0):+.2%}` | **허용 방향**: `롱({'O' if wm.get('allow_long') else 'X'}) / 숏({'O' if wm.get('allow_short') else 'X'})`",
     ]
+    for hl in wm.get("top_headlines", [])[:3]:
+        lines.append(f"  - `[{hl['tag']}]` {hl['title']}")
+
+    lines.extend(
+        [
+            "",
+            "## 1. 🌤️ 현재 3축 차트 장세 판독 (Weather Radar)",
+            f"- **지배적 추세**: `{regime_scan['dominant_trend_regime']}` | **변동성**: `{regime_scan['volatility_state']}`",
+            f"- **시장 폭 (200MA 상회 비율)**: `{regime_scan['market_breadth_pct']:.0%}` | **BTC 24h**: `{regime_scan['btc_24h_return_pct']:+.2%}`",
+            f"- **최종 선택된 전략 무기**: **`{regime_scan['active_strategy_mode']}`**",
+            f"- **테스트넷 계좌 상태**: `{testnet_balance['mode']}` | 가용 잔고: **`${testnet_balance['available_balance_usdt']:,.2f} USDT`**",
+            "",
+            "## 2. ⚖️ 상위 주목 종목 AI 위원회 찬반 회의록 (Autonomous Debate Log)",
+        ]
+    )
 
     for idx, d in enumerate(regime_scan["actionable_signals"][:3], 1):
         lines.extend(
@@ -522,6 +559,12 @@ def generate_6panel_dashboard_html(
         </tr>
         """
 
+    wm = regime_scan.get("world_monitor", {})
+    wm_headlines_html = "".join(
+        f"<li><code>[{h['tag']}]</code> ({h['source']}) {h['title']}</li>"
+        for h in wm.get("top_headlines", [])[:4]
+    )
+
     approved_list = [s for s in regime_scan["actionable_signals"] if s["eggbot_approved"]]
     if approved_list:
         top_act = approved_list[0]
@@ -571,15 +614,26 @@ def generate_6panel_dashboard_html(
     {easy_headline}
   </div>
 
-  <!-- PANEL 01: MARKET & 3-AXIS REGIME OVERVIEW -->
+  <!-- PANEL 01: WORLDMONITOR + 3-AXIS REGIME OVERVIEW -->
   <div class="panel-full">
-    <h2>① 🌤️ 지금 코인 시장 날씨는 어떤가요? (1번 장세 판독기)</h2>
+    <h2>① 🌍 WorldMonitor 세계 정세·거시·뉴스 레이더 &amp; 🌤️ 3축 차트 장세 판독기</h2>
+    <div style="font-size:13.5px;background:#121d2f;padding:12px;border-radius:6px;border-left:4px solid #58a6ff;margin-bottom:12px;">
+      <div><strong>🌍 WorldMonitor 실시간 세계 정세 판독 &amp; 전략 선택 이유:</strong> {wm.get('korean_summary', '')}</div>
+      <div style="margin-top:6px;font-size:12.5px;color:#8b949e;">
+        📊 <strong>크립토 공포·탐욕 지수:</strong> <code>{wm.get('fear_greed_value', 50)} ({wm.get('fear_greed_label', 'Neutral')})</code> |
+        🪙 <strong>안전자산 금(PAXG) 24h:</strong> <code>{wm.get('gold_24h_return_pct', 0.0):+.2%}</code> |
+        🚦 <strong>거시 허용 방향:</strong> <code>롱({'허용' if wm.get('allow_long') else '차단'}) / 숏({'허용' if wm.get('allow_short') else '차단'})</code>
+      </div>
+      <ul style="margin:6px 0 0 0;padding-left:18px;font-size:12px;color:#c9d1d9;">
+        {wm_headlines_html}
+      </ul>
+    </div>
     <div class="kpi-bar">
       <div class="kpi"><div class="kpi-title">현재 시장 큰 흐름 (추세)</div><div class="kpi-val" style="color:#58a6ff;">{regime_scan['dominant_trend_regime']}</div></div>
       <div class="kpi"><div class="kpi-title">가격 출렁임 정도 (변동성)</div><div class="kpi-val" style="color:#f0883e;">{regime_scan['volatility_state']}</div></div>
       <div class="kpi"><div class="kpi-title">공격/방어 모드</div><div class="kpi-val" style="color:#3fb950;">{regime_scan['risk_appetite']}</div></div>
       <div class="kpi"><div class="kpi-title">상승 중인 코인 비율 (시장 폭)</div><div class="kpi-val">{regime_scan['market_breadth_pct']:.0%} (비트코인 24h: {regime_scan['btc_24h_return_pct']:+.2%})</div></div>
-      <div class="kpi"><div class="kpi-title">봇이 자동 선택한 전략 무기</div><div class="kpi-val" style="color:#a371f7;">{regime_scan['active_strategy_mode']}</div></div>
+      <div class="kpi"><div class="kpi-title">WorldMonitor × 차트 최종 선택 무기</div><div class="kpi-val" style="font-size:14px;color:#a371f7;">{regime_scan['active_strategy_mode']}</div></div>
     </div>
     <div style="font-size:13px;background:#0d1117;padding:10px;border-radius:6px;border-left:4px solid #a371f7;">
       <strong>🔍 비판 봇의 리스크 경고 (우리가 뭘 조심해야 하나요?):</strong> {regime_scan['what_could_be_wrong']}
