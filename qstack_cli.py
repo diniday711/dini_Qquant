@@ -16,6 +16,9 @@ from pathlib import Path
 import subprocess
 import sys
 
+if hasattr(sys.stdout, "reconfigure"):
+    sys.stdout.reconfigure(encoding="utf-8")
+
 BASE_DIR = Path(__file__).parent
 REPORTS_DIR = BASE_DIR / "reports"
 BRIEFING_PATH = REPORTS_DIR / "latest_discord_briefing.md"
