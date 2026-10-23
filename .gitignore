@@ -1,0 +1,11 @@
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.venv/
+venv/
+env/
+
+# Raw cached market data (automatically re-downloaded via `python run_phase1.py`)
+data/raw/*.csv

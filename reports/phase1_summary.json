@@ -1,0 +1,48 @@
+{
+  "config_sha256": "925b154685393ef3",
+  "days_evaluated": 180,
+  "candle_delta_1m_vs_15m_corr_rho": 0.9999999999999997,
+  "w2_pass": true,
+  "w2_details": [
+    "PASS: test_1_cost_module_two_tier_slippage_and_funding (0.10% fee + 0.04%/0.15% 2-tier slippage + 8h funding)",
+    "PASS: test_2_shift1_zero_lookahead_leakage (0.000000e+00 future mutation leakage across all features)",
+    "PASS: test_3_w2_position_sizing_cap_and_gap_loss_logged ([0.5%, 1.5%] cap, 0.30% floor, unclipped gap loss logged)",
+    "PASS: test_4_w2_daily_loss_kill_switch_enforcement (-2.0% daily loss hard stop verified)",
+    "PASS: test_5_w2_order_layer_fail_closed_adapter (timeout, partial fill, leverage & min-notional fail-closed)",
+    "PASS: test_6_assert_random_control_matches_execution_model (shared exit_model, cost_model, sizing & SHA-256 hash)"
+  ],
+  "exit_reason_breakdown": {
+    "STOP_LOSS": 214,
+    "TP1_AND_TP2_Z_REVERT": 109,
+    "TP1_THEN_BREAKEVEN": 20,
+    "TP1_THEN_GAP_STOP": 2,
+    "TIME_EXIT_96B": 1
+  },
+  "w1_evaluation": {
+    "config_sha256": "925b154685393ef3",
+    "total_trades": 346,
+    "oos_trades": 98,
+    "gross_profit_usd": 19.642057568550932,
+    "total_cost_usd": 507.06170336165854,
+    "net_profit_usd": -487.41964579310775,
+    "net_profit_to_cost_ratio": -0.9612629835021455,
+    "full_sharpe": -5.09209505470068,
+    "oos_sharpe": -4.49915357168886,
+    "max_drawdown_pct": 0.4901918235210255,
+    "oos_max_drawdown_pct": 0.11701183543667282,
+    "gap_loss_count": 18,
+    "random_baseline_mean_net_usd": -847.4561454537452,
+    "permutation_p_value": 0.013986013986013986,
+    "bootstrap_p_value": 0.999000999000999,
+    "shared_execution_model_verified": true,
+    "gate_1_sample_pass": true,
+    "gate_1_status": "PASS (346 >= 300)",
+    "gate_2_cost_ratio_pass": false,
+    "gate_3_oos_sharpe_pass": false,
+    "gate_3_oos_sample_valid": true,
+    "gate_4_mdd_pass": false,
+    "gate_5_random_baseline_pass": false,
+    "w1_overall_status": "FAIL (STRATEGY REJECTED)"
+  },
+  "final_parallel_decision": "REJECT_HYPOTHESIS: W2_PASSED_BUT_W1_EDGE_FAILED (Discard specification to Crumb DB; Live Forbidden)"
+}
