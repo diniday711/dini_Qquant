@@ -1,17 +1,18 @@
 """
-Q-Stack End-to-End Full Cycle Orchestrator & 6-Panel Control Tower (`run_full_cycle.py`)
-Runs all 7 `pstack` / `audit_bot.xml` / `Citadel` modules in one unified cycle:
-  [01. Conductor]      -> Orchestrates workflow & verifies SHA-256 config lock
-  [02. Hatcha]         -> Scans 10-coin universe + BTC along 3 Regime Axes (Trend, Vol, Breadth/Flow)
-  [03. Quant-Eng]      -> Runs Strategy Lab comparison (Mean-Rev vs Trend vs 3-Axis Regime Switcher)
-  [04. Dr. Eggbot]     -> Challenges every setup with Bear-Case & "WHAT COULD I BE WRONG ABOUT?"
-  [05. Potato-Shield]  -> Applies 1% risk cap, -2% Kill Switch & pings Binance Futures Testnet
-  [06. Suki]           -> Renders the 6-Panel Dark-Mode Web Control Tower (`reports/qstack_dashboard.html`)
-  [07. Crumb]          -> Persists experiments, regime calls, and trade audit logs into SQLite (`data/crumb_memory.db`)
-
-Usage:
-  - Single Full Cycle:          `python run_full_cycle.py`
-  - 24/7 Daemon + Web Server:   `python run_full_cycle.py --daemon --port 8080`
+Q-Stack End-to-End Full Cycle Orchestrator, Autonomous 24/7 Decision Engine & 6-Panel Dashboard
+Completes one full autonomous loop:
+  [Step 1. Research & 3-Axis Regime Radar (Hatcha)]
+     -> Classifies Trend, Volatility, and Breadth across BTC + 10 Altcoins.
+  [Step 2. Dynamic Strategy Switcher (Quant-Eng)]
+     -> Automatically selects TREND_BREAKOUT, RANGE_MEAN_REVERSION, or STAY_IN_CASH.
+  [Step 3. Structured Multi-Persona Debate & Autonomous Decision (Bull vs Bear vs Eggbot -> Apex CIO)]
+     -> Generates explicit Korean Meeting Logs (회의록) for every candidate and makes the 24/7 autonomous
+        INVEST / ABSTAIN decision without requiring human intervention at 3 AM.
+  [Step 4. Deterministic Risk Sizing & Binance Testnet Execution (Potato-Shield)]
+     -> Sizes approved trades at 1.0% risk cap, attaches STOP_MARKET protection, and executes on Testnet/Shadow.
+  [Step 5. Crumb SQLite Memory & Hermes Discord Briefing Generator]
+     -> Saves to `data/crumb_memory.db`, renders `reports/qstack_dashboard.html`, and writes
+        `reports/latest_discord_briefing.md` for Hermes Agent / Discord notifications.
 """
 import argparse
 from datetime import datetime, timezone
@@ -35,25 +36,17 @@ from engines.risk_engine import DeterministicRiskEngine
 from run_phase1 import run_w2_unit_tests
 
 
-def scan_live_3axis_regimes(
+def build_autonomous_debate_and_regime_scan(
     univ_1h: Dict[str, pd.DataFrame],
     btc_1h: pd.DataFrame,
     fund_dict: Dict[str, pd.DataFrame],
     eggbot: DrEggbotAuditor,
     risk_engine: DeterministicRiskEngine,
+    simulate_demo_fill_if_all_cash: bool = True,
 ) -> Dict[str, Any]:
-    """
-    [02. Hatcha + 04. Dr. Eggbot + 05. Potato-Shield]
-    Classify the latest bar of BTC and all 10 altcoins along the 3 `audit_bot.xml` axes:
-    - Trend Regime (`TRENDING_UP`, `TRENDING_DOWN`, `RANGING`)
-    - Volatility State (`COMPRESSED`, `NORMAL`, `EXPANDING`, `EXTREME`)
-    - Risk / Breadth Regime (`RISK_ON`, `RISK_OFF`, `TRANSITIONING`)
-    And map each market to its optimal strategy (`TREND_BREAKOUT`, `RANGE_MEAN_REV`, `STAY_IN_CASH`).
-    """
     btc_sorted = btc_1h.sort_values("open_time").reset_index(drop=True)
     btc_ret_24 = float(btc_sorted["close"].pct_change(24).iloc[-1])
 
-    # Compute cross-sectional market breadth (% of coins above 200h MA)
     above_200_flags = []
     for sym, kdf in univ_1h.items():
         s_close = kdf.sort_values("open_time")["close"]
@@ -62,10 +55,9 @@ def scan_live_3axis_regimes(
     breadth_pct = float(np.mean(above_200_flags)) if above_200_flags else 0.5
 
     coin_rows: List[Dict[str, Any]] = []
-    actionable_signals: List[Dict[str, Any]] = []
+    debate_logs: List[Dict[str, Any]] = []
     vol_states = []
     trend_states = []
-
     utc_today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
 
     for sym, kdf in univ_1h.items():
@@ -111,6 +103,10 @@ def scan_live_3axis_regimes(
         delta_r = float(last["delta_ratio"])
         rel_str = float(last["rel_strength_24"])
         atr_val = float(last["atr_20"])
+        high_48 = float(last["high_48"])
+        low_48 = float(last["low_48"])
+        bb_up = float(last["bb_upper"])
+        bb_dn = float(last["bb_lower"])
 
         f_df = fund_dict.get(sym)
         latest_funding = (
@@ -119,7 +115,7 @@ def scan_live_3axis_regimes(
             else 0.0001
         )
 
-        # Axis 1: Volatility State
+        # Axis 1: Volatility
         if vol_rank > 0.92:
             vol_state = "EXTREME"
         elif vol_rank < 0.20:
@@ -130,7 +126,7 @@ def scan_live_3axis_regimes(
             vol_state = "NORMAL"
         vol_states.append(vol_state)
 
-        # Axis 2: Trend Regime
+        # Axis 2: Trend
         if adx_val >= 22.0 and float(last["ema_20"]) > float(last["ema_50"]):
             trend_state = "TRENDING_UP"
         elif adx_val >= 22.0 and float(last["ema_20"]) < float(last["ema_50"]):
@@ -139,89 +135,121 @@ def scan_live_3axis_regimes(
             trend_state = "RANGING"
         trend_states.append(trend_state)
 
-        # Axis 3: Risk Appetite & Strategy Fit (`<strategy_mapping>`)
+        # Axis 3: Strategy Fit Mapping
         if vol_state == "EXTREME":
             risk_state = "RISK_OFF (HANDBRAKE)"
-            strategy_fit = "STAY_IN_CASH (Extreme Vol Tail)"
+            strategy_fit = "STAY_IN_CASH"
             conf = 85
         elif trend_state == "TRENDING_UP" and breadth_pct >= 0.50 and btc_ret_24 > 0:
             risk_state = "RISK_ON"
-            strategy_fit = "TREND_BREAKOUT (Long Bias)"
+            strategy_fit = "TREND_BREAKOUT_LONG"
             conf = min(92, int(60 + adx_val * 0.8))
         elif trend_state == "TRENDING_DOWN" and breadth_pct <= 0.50 and btc_ret_24 < 0:
             risk_state = "RISK_OFF"
-            strategy_fit = "TREND_BREAKOUT (Short Bias)"
+            strategy_fit = "TREND_BREAKOUT_SHORT"
             conf = min(92, int(60 + adx_val * 0.8))
-        elif trend_state == "RANGING" and vol_state in ("NORMAL", "COMPRESSED") and abs(btc_ret_24) < 0.02:
+        elif trend_state == "RANGING" and vol_state in ("NORMAL", "COMPRESSED"):
             risk_state = "NEUTRAL_RANGE"
-            strategy_fit = "RANGE_MEAN_REVERSION (BB/RSI)"
+            strategy_fit = "RANGE_MEAN_REVERSION"
             conf = 72
         else:
             risk_state = "TRANSITIONING"
-            strategy_fit = "STAY_IN_CASH (Mixed Signals)"
-            conf = 50
+            strategy_fit = "STAY_IN_CASH"
+            conf = 55
 
-        # Check if an active entry trigger is firing right now or on recent bar
-        cand_side = 0
-        sub_strat = "NONE"
-        if "TREND_BREAKOUT" in strategy_fit:
-            if close_px >= float(last["high_48"]) * 0.995 and delta_r > 0.08 and rel_str > 0.01:
-                cand_side = 1
-                sub_strat = "TREND"
-            elif close_px <= float(last["low_48"]) * 1.005 and delta_r < -0.08 and rel_str < -0.01:
-                cand_side = -1
-                sub_strat = "TREND"
-        elif "RANGE_MEAN_REVERSION" in strategy_fit:
-            if float(last["low"]) <= float(last["bb_lower"]) * 1.003 and rsi_val < 36.0:
+        # Determine candidate direction for autonomous committee evaluation
+        cand_side = 1 if rel_str >= 0 else -1
+        sub_strat = "TREND" if "TREND" in strategy_fit else "MEAN_REV"
+        is_exact_trigger = False
+
+        if strategy_fit == "TREND_BREAKOUT_LONG" and close_px >= high_48 * 0.995 and delta_r > 0.08:
+            cand_side = 1
+            sub_strat = "TREND"
+            is_exact_trigger = True
+        elif strategy_fit == "TREND_BREAKOUT_SHORT" and close_px <= low_48 * 1.005 and delta_r < -0.08:
+            cand_side = -1
+            sub_strat = "TREND"
+            is_exact_trigger = True
+        elif strategy_fit == "RANGE_MEAN_REVERSION":
+            if close_px <= bb_dn * 1.005 and rsi_val < 38.0:
                 cand_side = 1
                 sub_strat = "MEAN_REV"
-            elif float(last["high"]) >= float(last["bb_upper"]) * 0.997 and rsi_val > 64.0:
+                is_exact_trigger = True
+            elif close_px >= bb_up * 0.995 and rsi_val > 62.0:
                 cand_side = -1
                 sub_strat = "MEAN_REV"
+                is_exact_trigger = True
 
-        # Always run Dr. Eggbot audit on top candidate setups (or showcase top relative-strength coin)
         stop_dist = max(0.015, (2.2 * atr_val) / close_px)
-        stop_px = close_px * (1.0 - stop_dist) if cand_side >= 0 else close_px * (1.0 + stop_dist)
+        stop_px = close_px * (1.0 - stop_dist) if cand_side == 1 else close_px * (1.0 + stop_dist)
         expected_rr_cost = (stop_dist * 2.2) / 0.0014
 
-        if cand_side != 0:
-            audit = eggbot.audit_candidate_signal(
-                symbol=sym,
-                side=cand_side,
-                sub_strategy=sub_strat,
-                adx_14=adx_val,
-                vol_pct_rank=vol_rank,
-                market_breadth_pct=breadth_pct,
-                btc_ret_24=btc_ret_24,
-                delta_ratio=delta_r,
-                latest_funding_rate=latest_funding,
-                expected_reward_to_cost=expected_rr_cost,
-            )
-            sizing = risk_engine.size_and_validate_order(
-                symbol=sym,
-                side=cand_side,
-                entry_price=close_px,
-                stop_price=stop_px,
-                utc_date_str=utc_today,
-            )
-            actionable_signals.append(
-                {
-                    "symbol": sym,
-                    "side": "LONG" if cand_side == 1 else "SHORT",
-                    "side_int": cand_side,
-                    "sub_strategy": sub_strat,
-                    "entry_price": close_px,
-                    "stop_price": stop_px,
-                    "notional_usd": sizing.notional_usd,
-                    "quantity": sizing.quantity,
-                    "leverage": sizing.effective_leverage,
-                    "eggbot_approved": audit.approved and sizing.approved,
-                    "eggbot_verdict": audit.verdict_code if sizing.approved else sizing.reason,
-                    "bull_thesis": audit.bull_thesis,
-                    "bear_challenges": audit.bear_case_challenges,
-                    "what_could_be_wrong": audit.what_could_i_be_wrong_about,
-                }
-            )
+        audit = eggbot.audit_candidate_signal(
+            symbol=sym,
+            side=cand_side,
+            sub_strategy=sub_strat,
+            adx_14=adx_val,
+            vol_pct_rank=vol_rank,
+            market_breadth_pct=breadth_pct,
+            btc_ret_24=btc_ret_24,
+            delta_ratio=delta_r,
+            latest_funding_rate=latest_funding,
+            expected_reward_to_cost=expected_rr_cost,
+        )
+        sizing = risk_engine.size_and_validate_order(
+            symbol=sym,
+            side=cand_side,
+            entry_price=close_px,
+            stop_price=stop_px,
+            utc_date_str=utc_today,
+        )
+
+        final_approved = bool(is_exact_trigger and audit.approved and sizing.approved)
+
+        # Build Korean Multi-Persona Debate Log (회의록)
+        research_note = (
+            f"[리서치 봇 Hatcha] {sym} 현재가 ${close_px:,.4f} (24h {float(last['ret_24']):+.2%}, "
+            f"BTC 대비 상대강도 {rel_str:+.2%}). 장세={trend_state}/{vol_state}, ADX={adx_val:.1f}, RSI={rsi_val:.0f}, "
+            f"수급 Delta={delta_r:+.2f}, 펀딩비={latest_funding:.4%}."
+        )
+        pro_opinion = (
+            f"[찬성 봇 Bull/Trend] 현재 배정 전략은 `{strategy_fit}`입니다. "
+            f"{'LONG' if cand_side==1 else 'SHORT'} 방향 진입 시 손절폭 {stop_dist:.2%}(${stop_px:,.4f}), "
+            f"비용 대비 기대수익비 {expected_rr_cost:.1f}배로 손익비가 우수합니다."
+        )
+        con_opinion = (
+            f"[비판 봇 Dr.Eggbot] 반론 점검: {'; '.join(audit.bear_case_challenges)} | "
+            f"{'돌파/밴드 타점 도달 완료!' if is_exact_trigger else '아직 48h 돌파선/밴드 상하단 타점에 완전히 닿지 않음(대기 필요).'}"
+        )
+        cio_decision = (
+            f"✅ [최종 승인 - 즉시 주문 집행] 타점 도달 및 리스크 감사 통과! {sizing.notional_usd:,.2f} USDT ({sizing.effective_leverage:.2f}x) 주문 전송."
+            if final_approved
+            else f"⏸️ [관망/기각 (ABSTAIN)] {'타점 미도달(대기)' if not is_exact_trigger else audit.verdict_code} 사유로 진입 보류."
+        )
+
+        debate_logs.append(
+            {
+                "symbol": sym,
+                "side": "LONG" if cand_side == 1 else "SHORT",
+                "side_int": cand_side,
+                "sub_strategy": sub_strat,
+                "strategy_fit": strategy_fit,
+                "is_exact_trigger": is_exact_trigger,
+                "entry_price": close_px,
+                "stop_price": stop_px,
+                "notional_usd": sizing.notional_usd,
+                "quantity": sizing.quantity,
+                "leverage": sizing.effective_leverage,
+                "eggbot_approved": final_approved,
+                "eggbot_verdict": "APPROVED_EXECUTE" if final_approved else "ABSTAIN_WAIT",
+                "research_note": research_note,
+                "bull_thesis": pro_opinion,
+                "bear_challenges": [con_opinion],
+                "cio_verdict_text": cio_decision,
+                "what_could_be_wrong": audit.what_could_i_be_wrong_about,
+                "score_sort": (1000 if final_approved else 0) + abs(rel_str) * 100 + adx_val,
+            }
+        )
 
         coin_rows.append(
             {
@@ -242,24 +270,15 @@ def scan_live_3axis_regimes(
             }
         )
 
-    # Dominant Market Summary
+    debate_logs.sort(key=lambda x: x["score_sort"], reverse=True)
+
     up_cnt = sum(1 for t in trend_states if t == "TRENDING_UP")
     dn_cnt = sum(1 for t in trend_states if t == "TRENDING_DOWN")
-    if up_cnt >= 5:
-        dom_trend = "TRENDING_UP"
-    elif dn_cnt >= 5:
-        dom_trend = "TRENDING_DOWN"
-    else:
-        dom_trend = "RANGING / ROTATION"
+    dom_trend = "TRENDING_UP" if up_cnt >= 5 else ("TRENDING_DOWN" if dn_cnt >= 5 else "RANGING / ROTATION")
 
     ext_cnt = sum(1 for v in vol_states if v == "EXTREME")
     exp_cnt = sum(1 for v in vol_states if v == "EXPANDING")
-    if ext_cnt >= 3:
-        dom_vol = "EXTREME (HANDBRAKE)"
-    elif exp_cnt >= 4:
-        dom_vol = "EXPANDING"
-    else:
-        dom_vol = "NORMAL / COMPRESSED"
+    dom_vol = "EXTREME (HANDBRAKE)" if ext_cnt >= 3 else ("EXPANDING" if exp_cnt >= 4 else "NORMAL / COMPRESSED")
 
     if breadth_pct >= 0.60 and btc_ret_24 > 0:
         dom_risk = "RISK_ON"
@@ -275,9 +294,9 @@ def scan_live_3axis_regimes(
         active_mode = "SELECTIVE_REGIME_SWITCHER"
 
     global_wrong_about = (
-        f"Current Breadth is {breadth_pct:.0%} and BTC 24h return is {btc_ret_24:+.2%}. "
-        "What could we be wrong about? If a sudden macro liquidity shock or exchange liquidation cascade hits, "
-        "cross-asset correlations will spike to 1.0—our 1.0% per-trade stop and -2.0% daily Kill Switch are the final line of defense."
+        f"현재 200시간선 위 코인 비율(시장 폭)은 {breadth_pct:.0%}, BTC 24시간 수익률은 {btc_ret_24:+.2%}입니다. "
+        "만약 거시 지표 발표나 거래소 연쇄 청산이 발생하면 모든 알트코인 상관계수가 1로 수렴할 수 있으므로, "
+        "Potato-Shield가 강제하는 1회 손실 캡(1.0%)과 일일 킬스위치(-2.0%)를 절대 해제하지 마십시오."
     )
 
     return {
@@ -290,8 +309,60 @@ def scan_live_3axis_regimes(
         "confidence_score": 78,
         "what_could_be_wrong": global_wrong_about,
         "coin_regimes": coin_rows,
-        "actionable_signals": actionable_signals,
+        "actionable_signals": debate_logs[:5],  # Top 5 debated coins always shown in Meeting Room!
     }
+
+
+def write_hermes_discord_briefing(
+    regime_scan: Dict[str, Any],
+    strategy_comparison: Dict[str, Any],
+    testnet_balance: Dict[str, Any],
+    output_md_path: str = "reports/latest_discord_briefing.md",
+) -> str:
+    """
+    Generate a clean Korean Markdown briefing that Hermes Agent (에르메스 에이전트)
+    can read and send directly to the user's Discord channel.
+    """
+    now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
+    sw = strategy_comparison.get("3_regime_switched_multi_strategy", {})
+
+    lines = [
+        f"# 🏛️ [Q-Stack 24/7 정례 브리핑 & AI 위원회 회의록] ({now_str})",
+        "",
+        "## 1. 🌤️ 현재 3축 시장 장세 판독 (Weather Radar)",
+        f"- **지배적 추세**: `{regime_scan['dominant_trend_regime']}` | **변동성**: `{regime_scan['volatility_state']}`",
+        f"- **시장 폭 (200MA 상회 비율)**: `{regime_scan['market_breadth_pct']:.0%}` | **BTC 24h**: `{regime_scan['btc_24h_return_pct']:+.2%}`",
+        f"- **자동 선택된 전략 모드**: **`{regime_scan['active_strategy_mode']}`**",
+        f"- **테스트넷 계좌 상태**: `{testnet_balance['mode']}` | 가용 잔고: **`${testnet_balance['available_balance_usdt']:,.2f} USDT`**",
+        "",
+        "## 2. ⚖️ 상위 주목 종목 AI 위원회 찬반 회의록 (Autonomous Debate Log)",
+    ]
+
+    for idx, d in enumerate(regime_scan["actionable_signals"][:3], 1):
+        lines.extend(
+            [
+                f"### [{idx}] {d['symbol']} ({d['side']} 검토 | 배정 전략: `{d['strategy_fit']}`)",
+                f"- {d['research_note']}",
+                f"- {d['bull_thesis']}",
+                f"- {d['bear_challenges'][0]}",
+                f"- **최종 심판 결정**: {d['cio_verdict_text']}",
+                "",
+            ]
+        )
+
+    lines.extend(
+        [
+            "## 3. 📊 360일 전략 연구소 검증 요약 (W1 × W2)",
+            f"- **3축 장세 스위칭 전략**: `{sw.get('trades', 0)}건` | 순수익 **`${sw.get('net_pnl_usd', 0.0):+,.2f}`** | `Gross/Cost = {sw.get('gross_to_cost_ratio', 0.0):.2f}배` | `MDD = {sw.get('mdd_pct', 0.0):.2%}`",
+            f"- **리스크 주의보 (What could we be wrong about?)**: {regime_scan['what_could_be_wrong']}",
+        ]
+    )
+
+    content = "\n".join(lines) + "\n"
+    os.makedirs(os.path.dirname(output_md_path), exist_ok=True)
+    with open(output_md_path, "w", encoding="utf-8") as f:
+        f.write(content)
+    return content
 
 
 def generate_6panel_dashboard_html(
@@ -353,26 +424,35 @@ def generate_6panel_dashboard_html(
         """
 
     signals_html = ""
-    if regime_scan["actionable_signals"]:
-        for sig in regime_scan["actionable_signals"]:
-            badge_col = "#238636" if sig["eggbot_approved"] else "#da3633"
-            signals_html += f"""
-            <div style="border:1px solid #30363d;border-left:4px solid {badge_col};padding:10px;margin-bottom:8px;border-radius:4px;background:#0d1117;">
-              <div><strong>{sig['symbol']} [{sig['side']}]</strong> via <code>{sig['sub_strategy']}</code> | Entry: <code>${sig['entry_price']:,.4f}</code> | Stop: <code>${sig['stop_price']:,.4f}</code> | Size: <code>${sig['notional_usd']:,.2f} ({sig['leverage']:.2f}x)</code> | Verdict: <span style="color:{badge_col};font-weight:bold;">{sig['eggbot_verdict']}</span></div>
-              <div style="font-size:12px;color:#8b949e;margin-top:4px;"><strong>Bull Thesis:</strong> {sig['bull_thesis']}</div>
-              <div style="font-size:12px;color:#f0883e;margin-top:2px;"><strong>Dr. Eggbot Challenges:</strong> {"; ".join(sig['bear_challenges'])}</div>
-              <div style="font-size:12px;color:#a371f7;margin-top:2px;"><strong>WHAT COULD I BE WRONG ABOUT?:</strong> {sig['what_could_be_wrong']}</div>
-            </div>
-            """
-    else:
-        signals_html = """
-        <div style="padding:12px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#8b949e;">
-          현재 시각 기준 3축 장세 필터와 Dr. Eggbot 감사를 동시에 만족하는 신규 진입 캔들이 없습니다 (<strong>STAY IN CASH / 대기 상태</strong> — 불확실한 장세에서 자본을 보호하는 중입니다).
+    for sig in regime_scan["actionable_signals"]:
+        badge_col = "#238636" if sig["eggbot_approved"] else "#8b949e"
+        signals_html += f"""
+        <div style="border:1px solid #30363d;border-left:4px solid {badge_col};padding:10px;margin-bottom:8px;border-radius:4px;background:#0d1117;">
+          <div style="font-size:13px;"><strong>{sig['symbol']} [{sig['side']} 검토]</strong> | 배정: <code>{sig['strategy_fit']}</code> | 진입가: <code>${sig['entry_price']:,.4f}</code> | 손절가: <code>${sig['stop_price']:,.4f}</code> | 사이징: <code>${sig['notional_usd']:,.2f} ({sig['leverage']:.2f}x)</code></div>
+          <div style="font-size:12px;color:#c9d1d9;margin-top:4px;">{sig['research_note']}</div>
+          <div style="font-size:12px;color:#3fb950;margin-top:2px;">{sig['bull_thesis']}</div>
+          <div style="font-size:12px;color:#f0883e;margin-top:2px;">{sig['bear_challenges'][0]}</div>
+          <div style="font-size:12.5px;color:#58a6ff;font-weight:bold;margin-top:4px;">{sig['cio_verdict_text']}</div>
         </div>
         """
 
+    trade_rows_html = ""
+    for tr in recent_trades[:8]:
+        trade_rows_html += f"""
+        <tr>
+          <td>{tr['recorded_at']}</td>
+          <td><strong>{tr['symbol']}</strong> ({tr['side']})</td>
+          <td><code>{tr['sub_strategy']}</code></td>
+          <td>${tr['entry_price']:,.4f}</td>
+          <td>${tr['stop_price']:,.4f}</td>
+          <td>${tr['notional_usd']:,.2f} ({tr['leverage']:.2f}x)</td>
+          <td><code>{tr['eggbot_verdict']}</code></td>
+          <td><code>{tr['order_status']}</code></td>
+        </tr>
+        """
+
     exp_rows_html = ""
-    for ex in recent_experiments[:8]:
+    for ex in recent_experiments[:6]:
         exp_rows_html += f"""
         <tr>
           <td>{ex['created_at']}</td>
@@ -395,7 +475,7 @@ def generate_6panel_dashboard_html(
 <style>
   body {{ background:#090d16; color:#c9d1d9; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",monospace; margin:20px; line-height:1.45; }}
   h1, h2, h3 {{ color:#f0f6fc; margin:0 0 10px 0; }}
-  .grid {{ display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }}
+  .grid {{ display:grid; grid-template-columns:1.25fr 0.75fr; gap:16px; margin-bottom:16px; }}
   .panel {{ background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; }}
   .panel-full {{ grid-column:1 / -1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; margin-bottom:16px; }}
   table {{ width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px; }}
@@ -409,7 +489,7 @@ def generate_6panel_dashboard_html(
 </head>
 <body>
   <h1>🏛️ Q-Stack: 1-Person 24/7 AI Quant Desk &amp; Regime Switcher (6-Panel Terminal)</h1>
-  <p style="color:#8b949e;margin-top:0;">Last Updated: <code>{now_str}</code> | Config SHA-256: <code>{CONFIG.config_hash()}</code> | Auto-Refresh: 5m</p>
+  <p style="color:#8b949e;margin-top:0;">Last Updated: <code>{now_str}</code> | Config SHA-256: <code>{CONFIG.config_hash()}</code> | Hermes Discord Briefing: <code>reports/latest_discord_briefing.md</code></p>
 
   <!-- PANEL 01: MARKET & 3-AXIS REGIME OVERVIEW -->
   <div class="panel-full">
@@ -447,9 +527,9 @@ def generate_6panel_dashboard_html(
   </div>
 
   <div class="grid">
-    <!-- PANEL 03: SIGNAL MONITOR & DR. EGGBOT BEAR-CASE AUDIT -->
+    <!-- PANEL 03: AUTONOMOUS DEBATE LOG & SIGNAL MONITOR -->
     <div class="panel">
-      <h2>PANEL 03 — 🥚 Signal Monitor &amp; Dr. Eggbot Bear-Case Audit</h2>
+      <h2>PANEL 03 — ⚖️ 24/7 Autonomous Committee Debate Log (회의록: 리서치 vs 찬성 vs 비판 → 심판 결정)</h2>
       {signals_html}
     </div>
 
@@ -457,14 +537,19 @@ def generate_6panel_dashboard_html(
     <div class="panel">
       <h2>PANEL 05 — 🛡️ Potato-Shield Risk &amp; Binance Testnet Terminal</h2>
       <div class="kpi-bar">
-        <div class="kpi"><div class="kpi-title">Execution Mode</div><div class="kpi-val" style="font-size:14px;color:#58a6ff;">{testnet_balance['mode']}</div></div>
+        <div class="kpi"><div class="kpi-title">Execution Mode</div><div class="kpi-val" style="font-size:13px;color:#58a6ff;">{testnet_balance['mode']}</div></div>
         <div class="kpi"><div class="kpi-title">Testnet Balance</div><div class="kpi-val">${testnet_balance['available_balance_usdt']:,.2f} USDT</div></div>
-        <div class="kpi"><div class="kpi-title">Binance Testnet Ping</div><div class="kpi-val">{testnet_ping.get('latency_ms', -1)} ms</div></div>
+        <div class="kpi"><div class="kpi-title">Testnet Ping</div><div class="kpi-val">{testnet_ping.get('latency_ms', -1)} ms</div></div>
       </div>
       <p style="font-size:12.5px;margin:6px 0;"><strong>Hard Risk Constitution (W2 Verified):</strong> Per-Trade Cap = <code>1.0% (Max 1.5%)</code> | Daily Kill Switch = <code>-2.0%</code> | Max Gross Leverage = <code>5.0x</code></p>
       <ul style="font-size:12px;color:#3fb950;margin:6px 0;padding-left:18px;">
         {"".join(f"<li><code>{d}</code></li>" for d in w2_details)}
       </ul>
+      <h3 style="margin-top:14px;font-size:13px;">Recent Autonomous Decision &amp; Order Audit Ledger</h3>
+      <table>
+        <tr><th>Time</th><th>Symbol</th><th>Strat</th><th>Entry</th><th>Stop</th><th>Size</th><th>Verdict</th><th>Order</th></tr>
+        {trade_rows_html}
+      </table>
     </div>
   </div>
 
@@ -539,7 +624,9 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
     risk_engine = DeterministicRiskEngine(CONFIG, CostModel(CONFIG))
     risk_engine.equity = float(bal_res["available_balance_usdt"])
 
-    regime_scan = scan_live_3axis_regimes(univ_1h, btc_1h, fund_360, eggbot, risk_engine)
+    regime_scan = build_autonomous_debate_and_regime_scan(
+        univ_1h, btc_1h, fund_360, eggbot, risk_engine
+    )
     print(
         f"  -> Dominant Regime: Trend={regime_scan['dominant_trend_regime']} | "
         f"Vol={regime_scan['volatility_state']} | Breadth={regime_scan['market_breadth_pct']:.0%} | "
@@ -552,7 +639,7 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
     strat_comp = run_regime_switching_study(univ_1h, btc_1h, fund_360)
 
     print("\n" + "=" * 76)
-    print("[Q-Stack Cycle] 5/6 Recording to Crumb SQLite DB & Processing Testnet Intents...")
+    print("[Q-Stack Cycle] 5/6 Recording Autonomous Debate Decisions & Testnet Orders to Crumb DB...")
     print("=" * 76)
     crumb = CrumbMemoryDB("data/crumb_memory.db")
     crumb.log_regime_snapshot(
@@ -567,28 +654,7 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
         coin_regimes=regime_scan["coin_regimes"],
     )
 
-    # Log the 3 strategy modes into Crumb DB if table is empty or on new run
-    if len(crumb.get_recent_experiments(limit=1)) == 0:
-        for mode_name, m in strat_comp.items():
-            net_v = m.get("net_pnl_usd", 0.0)
-            crumb.log_experiment(
-                strategy_name=mode_name,
-                config_sha256=CONFIG.config_hash(),
-                timeframe="1h",
-                days_tested=360,
-                trades_count=m.get("trades", 0),
-                gross_pnl_usd=m.get("gross_pnl_usd", 0.0),
-                total_cost_usd=m.get("total_cost_usd", 0.0),
-                net_pnl_usd=net_v,
-                gross_to_cost_ratio=m.get("gross_to_cost_ratio", 0.0),
-                sharpe=m.get("sharpe", 0.0),
-                mdd_pct=m.get("mdd_pct", 0.0),
-                w1_status="PASS (Net>0 & Gross/Cost>=3.0)" if net_v > 0 else "REJECTED (Cost/Regime Loss)",
-                w2_status="PASS (6/6)",
-                rejection_reason="NONE" if net_v > 0 else "Failed due to trading against market regime",
-            )
-
-    for sig in regime_scan["actionable_signals"]:
+    for sig in regime_scan["actionable_signals"][:3]:
         if sig["eggbot_approved"]:
             ord_res = testnet_client.place_testnet_bracket_order(
                 symbol=sig["symbol"],
@@ -601,7 +667,7 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
             order_status = ord_res["status"]
             order_id = ord_res["order_id"]
         else:
-            order_status = "BLOCKED_BY_EGGBOT_OR_SHIELD"
+            order_status = "WAIT_FOR_TRIGGER"
             order_id = "NONE"
 
         crumb.log_trade_event(
@@ -615,14 +681,20 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
             notional_usd=sig["notional_usd"],
             leverage=sig["leverage"],
             eggbot_verdict=sig["eggbot_verdict"],
-            eggbot_bear_case="; ".join(sig["bear_challenges"]),
+            eggbot_bear_case=sig["bear_challenges"][0],
             order_status=order_status,
             order_id=order_id,
         )
 
     print("\n" + "=" * 76)
-    print("[Q-Stack Cycle] 6/6 Rendering Suki 6-Panel Dashboard (`reports/qstack_dashboard.html`)...")
+    print("[Q-Stack Cycle] 6/6 Rendering 6-Panel Dashboard & Hermes Discord Briefing...")
     print("=" * 76)
+    write_hermes_discord_briefing(
+        regime_scan=regime_scan,
+        strategy_comparison=strat_comp,
+        testnet_balance=bal_res,
+        output_md_path="reports/latest_discord_briefing.md",
+    )
     generate_6panel_dashboard_html(
         regime_scan=regime_scan,
         strategy_comparison=strat_comp,
@@ -634,6 +706,7 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
         output_path="reports/qstack_dashboard.html",
     )
     print("  -> Dashboard ready at: C:\\Users\\user\\Desktop\\qunat\\reports\\qstack_dashboard.html")
+    print("  -> Discord Briefing ready at: C:\\Users\\user\\Desktop\\qunat\\reports\\latest_discord_briefing.md")
     return regime_scan
 
 
