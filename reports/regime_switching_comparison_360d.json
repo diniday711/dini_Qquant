@@ -41,5 +41,20 @@
     "sharpe": 0.5770031292509117,
     "mdd_pct": 0.1805996461834507,
     "win_rate": 0.3418803418803419
+  },
+  "4_wonyotti_grid_regime_hybrid": {
+    "trades": 97,
+    "sub_strategy_mix": {
+      "WONYOTTI_VOL_CLUSTER": 91,
+      "MEAN_REV": 6
+    },
+    "gross_pnl_usd": 349.8770455756259,
+    "total_cost_usd": 72.43090040401819,
+    "net_pnl_usd": 277.4461451716078,
+    "gross_to_cost_ratio": 4.830494217578663,
+    "net_to_cost_ratio": 3.830494217578664,
+    "sharpe": 0.9597715754099115,
+    "mdd_pct": 0.12740993773754716,
+    "win_rate": 0.41237113402061853
   }
 }

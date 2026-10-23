@@ -325,6 +325,7 @@ def write_hermes_discord_briefing(
     """
     now_str = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M UTC")
     sw = strategy_comparison.get("3_regime_switched_multi_strategy", {})
+    wy = strategy_comparison.get("4_wonyotti_grid_regime_hybrid", {})
 
     lines = [
         f"# 🏛️ [Q-Stack 24/7 정례 브리핑 & AI 위원회 회의록] ({now_str})",
@@ -353,7 +354,8 @@ def write_hermes_discord_briefing(
     lines.extend(
         [
             "## 3. 📊 360일 전략 연구소 검증 요약 (W1 × W2)",
-            f"- **3축 장세 스위칭 전략**: `{sw.get('trades', 0)}건` | 순수익 **`${sw.get('net_pnl_usd', 0.0):+,.2f}`** | `Gross/Cost = {sw.get('gross_to_cost_ratio', 0.0):.2f}배` | `MDD = {sw.get('mdd_pct', 0.0):.2%}`",
+            f"- **기본 3축 장세 스위칭 전략**: `{sw.get('trades', 0)}건` | 순수익 **`${sw.get('net_pnl_usd', 0.0):+,.2f}`** | `Gross/Cost = {sw.get('gross_to_cost_ratio', 0.0):.2f}배` | `MDD = {sw.get('mdd_pct', 0.0):.2%}`",
+            f"- **🏆 워뇨띠 멀티캔들 거래량+사토시 상대강도 스위칭**: `{wy.get('trades', 0)}건` | 순수익 **`${wy.get('net_pnl_usd', 0.0):+,.2f}`** (`승률 {wy.get('win_rate', 0.0):.1%}`) | `Gross/Cost = {wy.get('gross_to_cost_ratio', 0.0):.2f}배` | `MDD = {wy.get('mdd_pct', 0.0):.2%}`",
             f"- **리스크 주의보 (What could we be wrong about?)**: {regime_scan['what_could_be_wrong']}",
         ]
     )
@@ -405,7 +407,8 @@ def generate_6panel_dashboard_html(
     labels_map = {
         "1_blind_mean_reversion": "① 무지성 역추세 24/7 가동 (Blind Mean-Reversion)",
         "2_blind_trend_breakout": "② 무지성 추세돌파 24/7 가동 (Blind Trend-Breakout)",
-        "3_regime_switched_multi_strategy": "👑 ③ 3축 장세 판독 + 멀티 전략 스위처 (audit_bot.xml)",
+        "3_regime_switched_multi_strategy": "③ 3축 장세 판독 + 기본 멀티 전략 스위처 (audit_bot.xml)",
+        "4_wonyotti_grid_regime_hybrid": "🏆 ④ 워뇨띠 멀티캔들 거래량+사토시 상대강도 스위처 (Wonyotti Mode)",
     }
     for k, v in strategy_comparison.items():
         net_val = v.get("net_pnl_usd", 0.0)

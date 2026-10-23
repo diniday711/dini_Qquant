@@ -86,6 +86,7 @@ def run_regime_switching_study(
         "1_blind_mean_reversion": [],
         "2_blind_trend_breakout": [],
         "3_regime_switched_multi_strategy": [],
+        "4_wonyotti_grid_regime_hybrid": [],
     }
 
     for sym, kdf in univ_1h.items():
@@ -242,8 +243,47 @@ def run_regime_switching_study(
         regime_sig[range_mr_short_mask] = -1
         regime_type[range_mr_short_mask] = "MEAN_REV"
 
+        # --- Sub-Strategy 3: Wonyotti Multi-TF Volume Cluster + Satoshi Coupling (`4_wonyotti_volume_btc_coupling`) ---
+        # 1) Multi-Candle Volume Cluster (Q12 & Image 1: "캔들 여러 개랑 거래량 묶어서 전체적인 패턴")
+        df["vol_cluster_3h"] = df["volume"].rolling(3).mean() / np.maximum(1e-9, df["vol_sma_24"])
+        df["delta_cluster_3h"] = df["delta_ratio"].rolling(3).mean()
+        # 2) Multi-Timeframe Alignment (Image 1 & 3: checking higher 4h/daily structure alongside 1h)
+        df["ema_96_4h_proxy"] = df["close"].ewm(span=96, adjust=False).mean()
+
+        wonyotti_long = (
+            (~is_extreme_vol)
+            & is_trending_up
+            & (df["close"] > df["high_48"])
+            & (df["close"] > df["ema_96_4h_proxy"])
+            & (df["vol_cluster_3h"] > 1.45)
+            & (df["delta_cluster_3h"] > 0.08)
+            & (df["rel_strength_24"] > 0.025)  # Strong Satoshi chart outperformance (Q2)
+        )
+        wonyotti_short = (
+            (~is_extreme_vol)
+            & is_trending_down
+            & (df["close"] < df["low_48"])
+            & (df["close"] < df["ema_96_4h_proxy"])
+            & (df["vol_cluster_3h"] > 1.45)
+            & (df["delta_cluster_3h"] < -0.08)
+            & (df["rel_strength_24"] < -0.025)  # Weak Satoshi chart underperformance (Q2)
+        )
+        wonyotti_sig = np.zeros(len(df), dtype=int)
+        wonyotti_type = np.full(len(df), "CASH", dtype=object)
+        wonyotti_sig[wonyotti_long] = 1
+        wonyotti_type[wonyotti_long] = "WONYOTTI_VOL_CLUSTER"
+        wonyotti_sig[wonyotti_short] = -1
+        wonyotti_type[wonyotti_short] = "WONYOTTI_VOL_CLUSTER"
+        # Include strict high-conviction Range absorption when market is calm
+        wonyotti_sig[range_mr_long_mask] = 1
+        wonyotti_type[range_mr_long_mask] = "MEAN_REV"
+        wonyotti_sig[range_mr_short_mask] = -1
+        wonyotti_type[range_mr_short_mask] = "MEAN_REV"
+
         df["sig_regime_switched"] = regime_sig
         df["regime_strategy_type"] = regime_type
+        df["sig_wonyotti_hybrid"] = wonyotti_sig
+        df["wonyotti_strategy_type"] = wonyotti_type
 
         f_df = fund_dict.get(sym)
         if f_df is not None and not f_df.empty:
@@ -258,6 +298,7 @@ def run_regime_switching_study(
             ("1_blind_mean_reversion", "sig_blind_mr"),
             ("2_blind_trend_breakout", "sig_blind_trend"),
             ("3_regime_switched_multi_strategy", "sig_regime_switched"),
+            ("4_wonyotti_grid_regime_hybrid", "sig_wonyotti_hybrid"),
         ]:
             cands = _simulate_mode_trades(
                 sym, df, sig_col, f_times_ns, f_rates, mode_key
@@ -288,7 +329,11 @@ def _simulate_mode_trades(
     ex_low = df["exit_low_24"].to_numpy(dtype=float)
     ex_high = df["exit_high_24"].to_numpy(dtype=float)
     bb_mid = df["bb_mid"].to_numpy(dtype=float)
-    strat_types = df["regime_strategy_type"].to_numpy()
+    strat_types = (
+        df["wonyotti_strategy_type"].to_numpy()
+        if mode_key == "4_wonyotti_grid_regime_hybrid"
+        else df["regime_strategy_type"].to_numpy()
+    )
 
     out = []
     i = 205
@@ -299,10 +344,13 @@ def _simulate_mode_trades(
             i += 1
             continue
 
-        # Determine whether to use TREND exit (trailing 24h channel) or MEAN_REV exit (BB mid target)
+        # Determine whether to use TREND exit (trailing 24h channel) or MEAN_REV/GRID_SCALP exit (BB mid target)
+        st_label = str(strat_types[i])
         is_mr = (mode_key == "1_blind_mean_reversion") or (
-            mode_key == "3_regime_switched_multi_strategy" and strat_types[i] == "MEAN_REV"
+            mode_key in ("3_regime_switched_multi_strategy", "4_wonyotti_grid_regime_hybrid")
+            and st_label in ("MEAN_REV", "GRID_SCALP")
         )
+        is_wonyotti_split = mode_key == "4_wonyotti_grid_regime_hybrid"
         entry_idx = i + 1
         ep = float(opens[entry_idx])
         stop_dist = max(0.012 if is_mr else 0.015, (2.0 if is_mr else 2.5) * float(atrs[i]) / ep)
@@ -363,7 +411,7 @@ def _simulate_mode_trades(
                 "entry_time": t_in,
                 "exit_time": t_out,
                 "side": s,
-                "sub_strategy": "MEAN_REV" if is_mr else "TREND",
+                "sub_strategy": st_label if is_wonyotti_split else ("MEAN_REV" if is_mr else "TREND"),
                 "entry_price": ep,
                 "stop_price": stop_px,
                 "raw_return_pct": raw_ret,
@@ -395,12 +443,14 @@ def _replay_portfolio(cands_list: list[dict], cost_model: CostModel) -> dict:
                 still_open.append((ex_time, ex_net, ex_day, ex_sym, ex_max_l))
         active_exits = still_open
 
+        req_risk = 0.014 if str(row.get("sub_strategy", "")) == "WONYOTTI_VOL_CLUSTER" else None
         sizing = risk_engine.size_and_validate_order(
             symbol=row["symbol"],
             side=int(row["side"]),
             entry_price=float(row["entry_price"]),
             stop_price=float(row["stop_price"]),
             utc_date_str=utc_day,
+            requested_risk_pct=req_risk,
         )
         if not sizing.approved:
             continue
