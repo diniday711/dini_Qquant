@@ -225,7 +225,7 @@ class TestW2AndLeakageGates(unittest.TestCase):
         from engines.position_manager import PositionLifecycleManager
         from engines.binance_testnet_client import build_idempotent_client_order_id, round_symbol_qty
 
-        pm = PositionLifecycleManager(":memory:")
+        pm = PositionLifecycleManager("data/crumb_memory.db")
         self.assertEqual(int(pm.rules["max_concurrent_slots"]), self.cfg.max_concurrent_positions)
         self.assertAlmostEqual(float(pm.rules["daily_kill_switch_loss_pct"]), self.cfg.max_daily_loss_pct)
 
