@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta http-equiv="refresh" content="300">
+<title>Q-Stack 6-Panel AI Quant Workstation (Suki Dashboard)</title>
+<style>
+  body { background:#090d16; color:#c9d1d9; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",monospace; margin:20px; line-height:1.45; }
+  h1, h2, h3 { color:#f0f6fc; margin:0 0 10px 0; }
+  .grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-bottom:16px; }
+  .panel { background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; }
+  .panel-full { grid-column:1 / -1; background:#161b22; border:1px solid #30363d; border-radius:8px; padding:16px; margin-bottom:16px; }
+  table { width:100%; border-collapse:collapse; font-size:12.5px; margin-top:8px; }
+  th, td { border:1px solid #30363d; padding:7px 9px; text-align:left; }
+  th { background:#21262d; color:#58a6ff; }
+  .kpi-bar { display:flex; gap:14px; flex-wrap:wrap; margin-bottom:12px; }
+  .kpi { background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:10px 14px; flex:1; min-width:150px; }
+  .kpi-title { font-size:11px; color:#8b949e; text-transform:uppercase; }
+  .kpi-val { font-size:18px; font-weight:bold; color:#f0f6fc; margin-top:4px; }
+</style>
+</head>
+<body>
+  <h1>🏛️ Q-Stack: 1-Person 24/7 AI Quant Desk &amp; Regime Switcher (6-Panel Terminal)</h1>
+  <p style="color:#8b949e;margin-top:0;">Last Updated: <code>2026-10-23 05:13:35 UTC</code> | Config SHA-256: <code>925b154685393ef3</code> | Auto-Refresh: 5m</p>
+
+  <!-- PANEL 01: MARKET & 3-AXIS REGIME OVERVIEW -->
+  <div class="panel-full">
+    <h2>PANEL 01 — 🌤️ 3-Axis Market Regime Radar (audit_bot.xml: Trend × Volatility × Breadth)</h2>
+    <div class="kpi-bar">
+      <div class="kpi"><div class="kpi-title">Dominant Trend</div><div class="kpi-val" style="color:#58a6ff;">TRENDING_DOWN</div></div>
+      <div class="kpi"><div class="kpi-title">Volatility State</div><div class="kpi-val" style="color:#f0883e;">NORMAL / COMPRESSED</div></div>
+      <div class="kpi"><div class="kpi-title">Risk Appetite</div><div class="kpi-val" style="color:#3fb950;">RISK_OFF</div></div>
+      <div class="kpi"><div class="kpi-title">Market Breadth (&gt;200 MA)</div><div class="kpi-val">30% (BTC 24h: -1.24%)</div></div>
+      <div class="kpi"><div class="kpi-title">Active Strategy Mode</div><div class="kpi-val" style="color:#a371f7;">TREND_BREAKOUT_SHORT</div></div>
+    </div>
+    <div style="font-size:12.5px;background:#0d1117;padding:10px;border-radius:6px;border-left:4px solid #a371f7;">
+      <strong>🔍 Final Check — WHAT COULD I BE WRONG ABOUT?:</strong> Current Breadth is 30% and BTC 24h return is -1.24%. What could we be wrong about? If a sudden macro liquidity shock or exchange liquidation cascade hits, cross-asset correlations will spike to 1.0—our 1.0% per-trade stop and -2.0% daily Kill Switch are the final line of defense.
+    </div>
+  </div>
+
+  <!-- PANEL 02: 10-COIN LIQUIDITY, RESIDUAL & REGIME MAP -->
+  <div class="panel-full">
+    <h2>PANEL 02 — 🗺️ 10-Coin Universe Regime &amp; Strategy Fit Map (Hatcha Intelligence)</h2>
+    <table>
+      <tr>
+        <th>Symbol</th>
+        <th>Price</th>
+        <th>24h Return</th>
+        <th>Rel Strength vs BTC</th>
+        <th>Trend Axis</th>
+        <th>Volatility Axis (Rank)</th>
+        <th>ADX / RSI</th>
+        <th>Candle Delta</th>
+        <th>8h Funding</th>
+        <th>Mapped Strategy Fit (Conf)</th>
+      </tr>
+      
+        <tr>
+          <td><strong>ETHUSDT</strong></td>
+          <td>$2,409.9900</td>
+          <td style="color:#f85149;">-1.38%</td>
+          <td style="color:#f85149;">-0.15%</td>
+          <td><span style="background:#da3633;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">TRENDING_DOWN</span></td>
+          <td><span style="color:#58a6ff;font-weight:bold;">NORMAL</span> (57%)</td>
+          <td>37.3 / 50</td>
+          <td>-0.07</td>
+          <td>0.0056%</td>
+          <td><code>TREND_BREAKOUT (Short Bias)</code> (89%)</td>
+        </tr>
+        
+        <tr>
+          <td><strong>SOLUSDT</strong></td>
+          <td>$104.1900</td>
+          <td style="color:#f85149;">-1.21%</td>
+          <td style="color:#3fb950;">+0.02%</td>
+          <td><span style="background:#da3633;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">TRENDING_DOWN</span></td>
+          <td><span style="color:#58a6ff;font-weight:bold;">NORMAL</span> (33%)</td>
+          <td>29.8 / 40</td>
+          <td>-0.11</td>
+          <td>0.0093%</td>
+          <td><code>TREND_BREAKOUT (Short Bias)</code> (83%)</td>
+        </tr>
+        
+        <tr>
+          <td><strong>BNBUSDT</strong></td>
+          <td>$740.2900</td>
+          <td style="color:#f85149;">-0.24%</td>
+          <td style="color:#3fb950;">+0.99%</td>
+          <td><span style="background:#da3633;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">TRENDING_DOWN</span></td>
+          <td><span style="color:#58a6ff;font-weight:bold;">EXPANDING</span> (83%)</td>
+          <td>48.7 / 64</td>
+          <td>-0.10</td>
+          <td>0.0000%</td>
+          <td><code>TREND_BREAKOUT (Short Bias)</code> (92%)</td>
+        </tr>
+        
+        <tr>
+          <td><strong>XRPUSDT</strong></td>
+          <td>$1.3215</td>
+          <td style="color:#f85149;">-1.73%</td>
+          <td style="color:#f85149;">-0.49%</td>
+          <td><span style="background:#da3633;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">TRENDING_DOWN</span></td>
+          <td><span style="color:#58a6ff;font-weight:bold;">NORMAL</span> (42%)</td>
+          <td>44.1 / 45</td>
+          <td>-0.14</td>
+          <td>0.0050%</td>
+          <td><code>TREND_BREAKOUT (Short Bias)</code> (92%)</td>
+        </tr>
+        
+        <tr>
+          <td><strong>DOGEUSDT</strong></td>
+          <td>$0.0796</td>
+          <td style="color:#f85149;">-0.87%</td>
+          <td style="color:#3fb950;">+0.36%</td>
+          <td><span style="background:#da3633;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">TRENDING_DOWN</span></td>
+          <td><span style="color:#58a6ff;font-weight:bold;">NORMAL</span> (27%)</td>
+          <td>34.6 / 48</td>
+          <td>-0.02</td>
+          <td>0.0033%</td>
+          <td><code>TREND_BREAKOUT (Short Bias)</code> (87%)</td>
+        </tr>
+        
+        <tr>
+          <td><strong>ADAUSDT</strong></td>
+          <td>$0.2159</td>
+          <td style="color:#f85149;">-2.04%</td>
+          <td style="color:#f85149;">-0.81%</td>
+          <td><span style="background:#da3633;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">TRENDING_DOWN</span></td>
+          <td><span style="color:#58a6ff;font-weight:bold;">NORMAL</span> (57%)</td>
+          <td>56.6 / 46</td>
+          <td>+0.14</td>
+          <td>-0.0090%</td>
+          <td><code>TREND_BREAKOUT (Short Bias)</code> (92%)</td>
+        </tr>
+        
+        <tr>
+          <td><strong>AVAXUSDT</strong></td>
+          <td>$9.2570</td>
+          <td style="color:#f85149;">-1.16%</td>
+          <td style="color:#3fb950;">+0.07%</td>
+          <td><span style="background:#da3633;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">TRENDING_DOWN</span></td>
+          <td><span style="color:#58a6ff;font-weight:bold;">COMPRESSED</span> (8%)</td>
+          <td>54.8 / 53</td>
+          <td>-0.05</td>
+          <td>-0.0049%</td>
+          <td><code>TREND_BREAKOUT (Short Bias)</code> (92%)</td>
+        </tr>
+        
+        <tr>
+          <td><strong>LINKUSDT</strong></td>
+          <td>$12.1890</td>
+          <td style="color:#f85149;">-0.58%</td>
+          <td style="color:#3fb950;">+0.66%</td>
+          <td><span style="background:#da3633;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">TRENDING_DOWN</span></td>
+          <td><span style="color:#58a6ff;font-weight:bold;">NORMAL</span> (47%)</td>
+          <td>48.5 / 57</td>
+          <td>-0.11</td>
+          <td>-0.0049%</td>
+          <td><code>TREND_BREAKOUT (Short Bias)</code> (92%)</td>
+        </tr>
+        
+        <tr>
+          <td><strong>SUIUSDT</strong></td>
+          <td>$0.9924</td>
+          <td style="color:#f85149;">-1.30%</td>
+          <td style="color:#f85149;">-0.07%</td>
+          <td><span style="background:#da3633;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">TRENDING_DOWN</span></td>
+          <td><span style="color:#58a6ff;font-weight:bold;">COMPRESSED</span> (6%)</td>
+          <td>53.8 / 55</td>
+          <td>-0.06</td>
+          <td>-0.0024%</td>
+          <td><code>TREND_BREAKOUT (Short Bias)</code> (92%)</td>
+        </tr>
+        
+        <tr>
+          <td><strong>LTCUSDT</strong></td>
+          <td>$59.3400</td>
+          <td style="color:#f85149;">-2.18%</td>
+          <td style="color:#f85149;">-0.94%</td>
+          <td><span style="background:#da3633;color:#fff;padding:2px 6px;border-radius:4px;font-size:11px;">TRENDING_DOWN</span></td>
+          <td><span style="color:#58a6ff;font-weight:bold;">NORMAL</span> (52%)</td>
+          <td>56.1 / 50</td>
+          <td>-0.24</td>
+          <td>-0.0043%</td>
+          <td><code>TREND_BREAKOUT (Short Bias)</code> (92%)</td>
+        </tr>
+        
+    </table>
+  </div>
+
+  <div class="grid">
+    <!-- PANEL 03: SIGNAL MONITOR & DR. EGGBOT BEAR-CASE AUDIT -->
+    <div class="panel">
+      <h2>PANEL 03 — 🥚 Signal Monitor &amp; Dr. Eggbot Bear-Case Audit</h2>
+      
+        <div style="padding:12px;background:#0d1117;border:1px solid #30363d;border-radius:6px;color:#8b949e;">
+          현재 시각 기준 3축 장세 필터와 Dr. Eggbot 감사를 동시에 만족하는 신규 진입 캔들이 없습니다 (<strong>STAY IN CASH / 대기 상태</strong> — 불확실한 장세에서 자본을 보호하는 중입니다).
+        </div>
+        
+    </div>
+
+    <!-- PANEL 05: POTATO-SHIELD RISK & BINANCE TESTNET TERMINAL -->
+    <div class="panel">
+      <h2>PANEL 05 — 🛡️ Potato-Shield Risk &amp; Binance Testnet Terminal</h2>
+      <div class="kpi-bar">
+        <div class="kpi"><div class="kpi-title">Execution Mode</div><div class="kpi-val" style="font-size:14px;color:#58a6ff;">SHADOW_DRY_RUN (No .env Testnet Key Yet)</div></div>
+        <div class="kpi"><div class="kpi-title">Testnet Balance</div><div class="kpi-val">$1,000.00 USDT</div></div>
+        <div class="kpi"><div class="kpi-title">Binance Testnet Ping</div><div class="kpi-val">148.97 ms</div></div>
+      </div>
+      <p style="font-size:12.5px;margin:6px 0;"><strong>Hard Risk Constitution (W2 Verified):</strong> Per-Trade Cap = <code>1.0% (Max 1.5%)</code> | Daily Kill Switch = <code>-2.0%</code> | Max Gross Leverage = <code>5.0x</code></p>
+      <ul style="font-size:12px;color:#3fb950;margin:6px 0;padding-left:18px;">
+        <li><code>PASS: test_1_cost_module_two_tier_slippage_and_funding (0.10% fee + 0.04%/0.15% 2-tier slippage + 8h funding)</code></li><li><code>PASS: test_2_shift1_zero_lookahead_leakage (0.000000e+00 future mutation leakage across all features)</code></li><li><code>PASS: test_3_w2_position_sizing_cap_and_gap_loss_logged ([0.5%, 1.5%] cap, 0.30% floor, unclipped gap loss logged)</code></li><li><code>PASS: test_4_w2_daily_loss_kill_switch_enforcement (-2.0% daily loss hard stop verified)</code></li><li><code>PASS: test_5_w2_order_layer_fail_closed_adapter (timeout, partial fill, leverage & min-notional fail-closed)</code></li><li><code>PASS: test_6_assert_random_control_matches_execution_model (shared exit_model, cost_model, sizing & SHA-256 hash)</code></li>
+      </ul>
+    </div>
+  </div>
+
+  <!-- PANEL 04: STRATEGY LAB & W1 REJECTION MACHINE -->
+  <div class="panel-full">
+    <h2>PANEL 04 — 🔬 Strategy Lab: Single Strategy vs. 3-Axis Regime Switcher (360-Day Real Binance Proof)</h2>
+    <table>
+      <tr>
+        <th>Strategy Mode (360 Days, 10 Coins, Full Fees+Slippage+Funding)</th>
+        <th>Trades</th>
+        <th>Gross PnL</th>
+        <th>Total Cost</th>
+        <th>Net PnL (After Cost)</th>
+        <th>Gross/Cost Ratio</th>
+        <th>Win Rate</th>
+        <th>Max Drawdown</th>
+      </tr>
+      
+        <tr >
+          <td>① 무지성 역추세 24/7 가동 (Blind Mean-Reversion)</td>
+          <td>603건</td>
+          <td>$-334.11</td>
+          <td>$254.14</td>
+          <td style="color:#f85149;font-size:14px;">$-588.26</td>
+          <td>-1.31x (Net/Cost: -2.31x)</td>
+          <td>53.4%</td>
+          <td>60.56%</td>
+        </tr>
+        
+        <tr >
+          <td>② 무지성 추세돌파 24/7 가동 (Blind Trend-Breakout)</td>
+          <td>236건</td>
+          <td>$+40.89</td>
+          <td>$113.36</td>
+          <td style="color:#f85149;font-size:14px;">$-72.47</td>
+          <td>0.36x (Net/Cost: -0.64x)</td>
+          <td>31.8%</td>
+          <td>24.85%</td>
+        </tr>
+        
+        <tr style="background:#1c2d24;font-weight:bold;">
+          <td>👑 ③ 3축 장세 판독 + 멀티 전략 스위처 (audit_bot.xml)</td>
+          <td>117건</td>
+          <td>$+201.29</td>
+          <td>$65.21</td>
+          <td style="color:#3fb950;font-size:14px;">$+136.08</td>
+          <td>3.09x (Net/Cost: +2.09x)</td>
+          <td>34.2%</td>
+          <td>18.06%</td>
+        </tr>
+        
+    </table>
+  </div>
+
+  <!-- PANEL 06: CRUMB PERSISTENT SQLITE RESEARCH JOURNAL -->
+  <div class="panel-full">
+    <h2>PANEL 06 — 🍞 Crumb SQLite Institutional Memory (`data/crumb_memory.db` Experiment History)</h2>
+    <table>
+      <tr>
+        <th>Recorded At</th>
+        <th>Strategy Name</th>
+        <th>Config SHA-256</th>
+        <th>Trades</th>
+        <th>Gross PnL</th>
+        <th>Total Cost</th>
+        <th>Net PnL</th>
+        <th>Verdict</th>
+      </tr>
+      
+        <tr>
+          <td>2026-10-23 05:13:35 UTC</td>
+          <td><code>3_regime_switched_multi_strategy</code></td>
+          <td><code>925b154685393ef3</code></td>
+          <td>117</td>
+          <td>$+201.29</td>
+          <td>$65.21</td>
+          <td style="color:#3fb950;">$+136.08</td>
+          <td>PASS (Net>0 & Gross/Cost>=3.0)</td>
+        </tr>
+        
+        <tr>
+          <td>2026-10-23 05:13:35 UTC</td>
+          <td><code>2_blind_trend_breakout</code></td>
+          <td><code>925b154685393ef3</code></td>
+          <td>236</td>
+          <td>$+40.89</td>
+          <td>$113.36</td>
+          <td style="color:#f85149;">$-72.47</td>
+          <td>REJECTED (Cost/Regime Loss)</td>
+        </tr>
+        
+        <tr>
+          <td>2026-10-23 05:13:35 UTC</td>
+          <td><code>1_blind_mean_reversion</code></td>
+          <td><code>925b154685393ef3</code></td>
+          <td>603</td>
+          <td>$-334.11</td>
+          <td>$254.14</td>
+          <td style="color:#f85149;">$-588.26</td>
+          <td>REJECTED (Cost/Regime Loss)</td>
+        </tr>
+        
+    </table>
+  </div>
+</body>
+</html>
