@@ -246,20 +246,60 @@ def run_residual_momentum_breakout(
 
 def main():
     fetcher = BinanceDataFetcher(CONFIG, data_dir="data/raw")
-    print("Fetching 360-day 1h klines (Discovery 180d + Untouched Prior 180d Holdout)...")
+    print("Fetching 360-day 1h klines and building single reconciled ledger...")
     btc_1h = fetcher.fetch_klines("BTCUSDT", "1h", days=360)
     univ_1h = {sym: fetcher.fetch_klines(sym, "1h", days=360) for sym in CONFIG.target_universe}
     fund_360 = {sym: fetcher.fetch_funding_rates(sym, days=360) for sym in CONFIG.target_universe}
 
+    # Run ONE continuous 360-day simulation so warmup and equity curve are unbroken,
+    # then partition the single canonical trade ledger by `entry_time < mid_split`!
+    trades_full, sum_full_360 = run_residual_momentum_breakout(univ_1h, btc_1h, fund_360)
     mid_split = btc_1h["open_time"].min() + pd.Timedelta(days=180)
-    _, sum_holdout_prior180 = run_residual_momentum_breakout(univ_1h, btc_1h, fund_360, end_time=mid_split)
-    _, sum_discovery_recent180 = run_residual_momentum_breakout(univ_1h, btc_1h, fund_360, start_time=mid_split)
-    _, sum_full_360 = run_residual_momentum_breakout(univ_1h, btc_1h, fund_360)
+
+    trades_full["trade_id"] = np.arange(1, len(trades_full) + 1)
+    trades_full["segment"] = np.where(
+        trades_full["entry_time"] < mid_split, "PRIOR_180D_OOS", "RECENT_180D_IS"
+    )
+    trades_full.to_csv("reports/candidate_c_ledger_reconciled.csv", index=False)
+
+    df_prior = trades_full[trades_full["segment"] == "PRIOR_180D_OOS"]
+    df_recent = trades_full[trades_full["segment"] == "RECENT_180D_IS"]
+
+    # Strict Ledger Reconciliation Assert (`assert_segments_sum_to_total`)
+    assert len(df_prior) + len(df_recent) == len(trades_full), "Trade count mismatch!"
+    assert np.isclose(
+        df_prior["gross_pnl_usd"].sum() + df_recent["gross_pnl_usd"].sum(),
+        trades_full["gross_pnl_usd"].sum(),
+        atol=1e-9,
+    ), "Gross PnL sum mismatch!"
+    assert np.isclose(
+        df_prior["total_cost_usd"].sum() + df_recent["total_cost_usd"].sum(),
+        trades_full["total_cost_usd"].sum(),
+        atol=1e-9,
+    ), "Cost sum mismatch!"
+    assert np.isclose(
+        df_prior["net_pnl_usd"].sum() + df_recent["net_pnl_usd"].sum(),
+        trades_full["net_pnl_usd"].sum(),
+        atol=1e-9,
+    ), "Net PnL sum mismatch!"
 
     out = {
-        "untouched_prior_180d_holdout": sum_holdout_prior180,
-        "discovery_recent_180d": sum_discovery_recent180,
-        "full_360d_combined": sum_full_360,
+        "reconciliation_assert": "PASS (len & gross & cost & net sum to exact total)",
+        "prior_180d_segment": {
+            "trades": int(len(df_prior)),
+            "gross_pnl_usd": float(df_prior["gross_pnl_usd"].sum()),
+            "total_cost_usd": float(df_prior["total_cost_usd"].sum()),
+            "net_pnl_usd": float(df_prior["net_pnl_usd"].sum()),
+            "net_to_cost_ratio": float(df_prior["net_pnl_usd"].sum() / max(1e-9, df_prior["total_cost_usd"].sum())),
+        },
+        "recent_180d_segment": {
+            "trades": int(len(df_recent)),
+            "gross_pnl_usd": float(df_recent["gross_pnl_usd"].sum()),
+            "total_cost_usd": float(df_recent["total_cost_usd"].sum()),
+            "net_pnl_usd": float(df_recent["net_pnl_usd"].sum()),
+            "net_to_cost_ratio": float(df_recent["net_pnl_usd"].sum() / max(1e-9, df_recent["total_cost_usd"].sum())),
+        },
+        "full_360d_reconciled": sum_full_360,
     }
     with open("reports/candidate_c_momentum_360d.json", "w", encoding="utf-8") as f:
         json.dump(out, f, indent=2)
