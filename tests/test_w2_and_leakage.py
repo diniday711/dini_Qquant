@@ -298,6 +298,83 @@ class TestW2AndLeakageGates(unittest.TestCase):
             except PermissionError:
                 pass
 
+    def test_9_vibe_trading_correlation_and_alpha_vitality(self):
+        """
+        Verify Vibe-Trading inspired diagnostics (`engines/vibe_diagnostics.py`):
+        1) Herd correlation (`corr > 0.90`) triggers `HERD_LOCK_EXTREME` and throttles `recommended_max_slots = 1`,
+           causing `PositionLifecycleManager.can_open_position` to block a 2nd slot with `SKIP_CORR_THROTTLED_SLOTS_FULL (1/1)`.
+        2) Independent returns trigger `DISPERSED_NORMAL` (`recommended_max_slots = 3`).
+        3) `compute_alpha_vitality_diagnostics` classifies `ALIVE/DEAD/REVERSED` with zero look-ahead leakage when mutating the final bar.
+        """
+        import tempfile
+        import os
+        from engines.vibe_diagnostics import compute_correlation_regime, compute_alpha_vitality_diagnostics
+        from engines.position_manager import PositionLifecycleManager
+
+        rng = np.random.default_rng(77)
+        base_rets = rng.normal(0.001, 0.015, 100)
+        herd_univ = {}
+        indep_univ = {}
+        for idx, sym in enumerate(["ETHUSDT", "SOLUSDT", "BNBUSDT", "XRPUSDT", "DOGEUSDT"]):
+            # 1) Herd universe: nearly identical returns
+            noise = rng.normal(0.0, 0.0005, 100)
+            px_herd = 100.0 * np.cumprod(1.0 + base_rets + noise)
+            herd_univ[sym] = pd.DataFrame(
+                {
+                    "close": px_herd,
+                    "volume": rng.uniform(1000, 5000, 100),
+                    "delta_ratio": rng.uniform(-0.3, 0.3, 100),
+                }
+            )
+            # 2) Independent universe
+            ind_rets = rng.normal(0.0, 0.015, 100)
+            px_ind = 100.0 * np.cumprod(1.0 + ind_rets)
+            indep_univ[sym] = pd.DataFrame(
+                {
+                    "close": px_ind,
+                    "volume": rng.uniform(1000, 5000, 100),
+                    "delta_ratio": rng.uniform(-0.3, 0.3, 100),
+                }
+            )
+
+        corr_herd = compute_correlation_regime(herd_univ, lookback_bars=72)
+        self.assertEqual(corr_herd["corr_regime"], "HERD_LOCK_EXTREME")
+        self.assertEqual(corr_herd["recommended_max_slots"], 1)
+
+        corr_indep = compute_correlation_regime(indep_univ, lookback_bars=72)
+        self.assertEqual(corr_indep["corr_regime"], "DISPERSED_NORMAL")
+        self.assertEqual(corr_indep["recommended_max_slots"], 3)
+
+        # Verify dynamic slot throttling in PositionLifecycleManager
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tf:
+            tmp_db = tf.name
+        try:
+            pm = PositionLifecycleManager(tmp_db)
+            plan = pm.compute_wonyotti_slot_order_plan(1000.0, 100.0, 2.0, 1)
+            self.assertTrue(
+                pm.open_or_record_position(
+                    "ETHUSDT", "LONG", 1, "WONYOTTI_VOLUME_CLUSTER_BREAKOUT", plan, 100.0, dynamic_max_slots=1
+                )
+            )
+            can_second, reason_second = pm.can_open_position("SOLUSDT", dynamic_max_slots=1)
+            self.assertFalse(can_second)
+            self.assertIn("SKIP_CORR_THROTTLED_SLOTS_FULL (1/1)", reason_second)
+        finally:
+            try:
+                if os.path.exists(tmp_db):
+                    os.remove(tmp_db)
+            except PermissionError:
+                pass
+
+        # Verify Alpha Vitality zero look-ahead leakage on final bar mutation
+        btc_df = herd_univ["ETHUSDT"].copy()
+        vit_a = compute_alpha_vitality_diagnostics(indep_univ, btc_df, lookback_bars=60)
+        mut_univ = {k: v.copy() for k, v in indep_univ.items()}
+        for k in mut_univ:
+            mut_univ[k].loc[len(mut_univ[k]) - 1, "close"] *= 5.0
+        vit_b = compute_alpha_vitality_diagnostics(mut_univ, btc_df, lookback_bars=60)
+        self.assertEqual(vit_a["families"], vit_b["families"])
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

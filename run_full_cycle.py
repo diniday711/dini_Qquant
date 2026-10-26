@@ -34,6 +34,11 @@ from engines.eggbot_auditor import DrEggbotAuditor
 from engines.position_manager import PositionLifecycleManager
 from engines.regime_switcher import compute_adx_causal, run_regime_switching_study
 from engines.risk_engine import DeterministicRiskEngine
+from engines.vibe_diagnostics import (
+    STRATEGY_TO_VITALITY_FAMILY,
+    compute_alpha_vitality_diagnostics,
+    compute_correlation_regime,
+)
 from engines.world_monitor_radar import WorldMonitorRadar
 from run_phase1 import run_w2_unit_tests
 
@@ -59,6 +64,10 @@ def build_autonomous_debate_and_regime_scan(
     # Run WorldMonitor Global Intelligence, Macro Cross-Asset & Sentiment Radar FIRST
     world_radar = WorldMonitorRadar()
     world_verdict = world_radar.evaluate_world_state(btc_ret_24, breadth_pct)
+
+    # Run Vibe-Trading Correlation Herd Detector & 30d Rolling Alpha Vitality Monitor
+    corr_diag = compute_correlation_regime(univ_1h, lookback_bars=72)
+    vitality_diag = compute_alpha_vitality_diagnostics(univ_1h, btc_1h, lookback_bars=720)
 
     coin_rows: List[Dict[str, Any]] = []
     debate_logs: List[Dict[str, Any]] = []
@@ -231,7 +240,12 @@ def build_autonomous_debate_and_regime_scan(
             (cand_side == 1 and world_verdict.allow_long)
             or (cand_side == -1 and world_verdict.allow_short)
         ) and (world_verdict.risk_multiplier > 0.0)
-        final_approved = bool(is_exact_trigger and sizing.approved and audit.approved and world_dir_allowed)
+        mapped_fam = STRATEGY_TO_VITALITY_FAMILY.get(sub_strat, "NONE")
+        fam_vitality = vitality_diag["families"].get(mapped_fam, {}).get("vitality_status", "ALIVE")
+        vitality_allowed = fam_vitality != "REVERSED"
+        final_approved = bool(
+            is_exact_trigger and sizing.approved and audit.approved and world_dir_allowed and vitality_allowed
+        )
 
         # Build Korean Multi-Persona Debate Log (회의록)
         research_note = (
@@ -253,7 +267,7 @@ def build_autonomous_debate_and_regime_scan(
             f"✅ [최종 승인 - 3단 분할주문 집행] 격리(ISOLATED) {slot_plan['notional_usd']:,.2f} USDT (슬롯배율 {slot_plan['slot_leverage']:.2f}x) 진입 + "
             f"1차 50% 익절(${tp1_px:,.4f}) + 칼손절(${stop_px:,.4f}) 동시 전송!"
             if final_approved
-            else f"⏸️ [관망/기각 (ABSTAIN)] {'타점 미도달(대기)' if not is_exact_trigger else audit.verdict_code} 사유로 진입 보류."
+            else f"⏸️ [관망/기각 (ABSTAIN)] {'[Vibe-Trading 수명감지: REVERSED(역작동) 진입차단]' if not vitality_allowed else ('타점 미도달(대기)' if not is_exact_trigger else audit.verdict_code)} 사유로 진입 보류."
         )
 
         debate_logs.append(
@@ -362,6 +376,10 @@ def build_autonomous_debate_and_regime_scan(
             "korean_summary": world_verdict.korean_summary,
             "top_headlines": world_verdict.top_headlines,
         },
+        "vibe_diagnostics": {
+            "correlation": corr_diag,
+            "alpha_vitality": vitality_diag,
+        },
         "coin_regimes": coin_rows,
         "actionable_signals": debate_logs[:5],  # Top 5 debated coins always shown in Meeting Room!
     }
@@ -392,12 +410,17 @@ def write_hermes_discord_briefing(
     for hl in wm.get("top_headlines", [])[:3]:
         lines.append(f"  - `[{hl['tag']}]` {hl['title']}")
 
+    vibe = regime_scan.get("vibe_diagnostics", {})
+    corr_d = vibe.get("correlation", {})
+    vit_d = vibe.get("alpha_vitality", {})
     lines.extend(
         [
             "",
-            "## 1. 🌤️ 현재 3축 차트 장세 판독 (Weather Radar)",
+            "## 1. 🌤️ 현재 3축 차트 장세 & Vibe-Trading 동조화/수명 판독 (Weather & Vitality Radar)",
             f"- **지배적 추세**: `{regime_scan['dominant_trend_regime']}` | **변동성**: `{regime_scan['volatility_state']}`",
             f"- **시장 폭 (200MA 상회 비율)**: `{regime_scan['market_breadth_pct']:.0%}` | **BTC 24h**: `{regime_scan['btc_24h_return_pct']:+.2%}`",
+            f"- **🔗 코인 동조화 경보기**: {corr_d.get('korean_summary', '')} (동적 허용 슬롯: **`{corr_d.get('recommended_max_slots', 3)}슬롯`**)",
+            f"- **🧬 전략 수명 감지기 (30일 IC)**: {vit_d.get('korean_summary', '')}",
             f"- **최종 선택된 전략 무기**: **`{regime_scan['active_strategy_mode']}`**",
             f"- **테스트넷 계좌 상태**: `{testnet_balance['mode']}` | 가용 잔고: **`${testnet_balance['available_balance_usdt']:,.2f} USDT`**",
             "",
@@ -566,6 +589,9 @@ def generate_6panel_dashboard_html(
         """
 
     wm = regime_scan.get("world_monitor", {})
+    vibe_d = regime_scan.get("vibe_diagnostics", {})
+    corr_html = vibe_d.get("correlation", {}).get("korean_summary", "")
+    vit_html = vibe_d.get("alpha_vitality", {}).get("korean_summary", "")
     wm_headlines_html = "".join(
         f"<li><code>[{h['tag']}]</code> ({h['source']}) {h['title']}</li>"
         for h in wm.get("top_headlines", [])[:4]
@@ -635,6 +661,10 @@ def generate_6panel_dashboard_html(
       <ul style="margin:6px 0 0 0;padding-left:18px;font-size:12px;color:#c9d1d9;">
         {wm_headlines_html}
       </ul>
+      <div style="margin-top:8px;padding-top:8px;border-top:1px solid #30363d;font-size:12.5px;color:#e6edf3;">
+        <div><strong>🔗 Vibe-Trading 코인 동조화 경보기:</strong> {corr_html}</div>
+        <div style="margin-top:4px;"><strong>🧬 Vibe-Trading 30일 전략 수명 감지기 (IC):</strong> {vit_html}</div>
+      </div>
     </div>
     <div class="kpi-bar">
       <div class="kpi"><div class="kpi-title">현재 시장 큰 흐름 (추세)</div><div class="kpi-val" style="color:#58a6ff;">{regime_scan['dominant_trend_regime']}</div></div>
@@ -819,9 +849,16 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
         print(f"  -> [Position Lifecycle] {ev}")
 
     latest_bar_tag = datetime.now(timezone.utc).strftime("%Y%m%d%H")
+    dyn_max_slots = (
+        regime_scan.get("vibe_diagnostics", {})
+        .get("correlation", {})
+        .get("recommended_max_slots", CONFIG.max_concurrent_positions)
+    )
     for sig in regime_scan["actionable_signals"][:3]:
         if sig["eggbot_approved"]:
-            can_open, gate_reason = pos_mgr.can_open_position(sig["symbol"])
+            can_open, gate_reason = pos_mgr.can_open_position(
+                sig["symbol"], dynamic_max_slots=dyn_max_slots
+            )
             if not can_open:
                 order_status = gate_reason
                 order_id = "NONE"
@@ -849,6 +886,7 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
                         plan=sig["slot_plan"],
                         entry_price=sig["entry_price"],
                         execution_mode=bal_res["mode"],
+                        dynamic_max_slots=dyn_max_slots,
                     )
         else:
             order_status = "WAIT_FOR_TRIGGER"

@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 import sqlite3
 from datetime import datetime, timezone
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 from config import CONFIG
 
 RULES_PATH = Path(__file__).parent.parent / "user_trading_rules.json"
@@ -332,13 +332,19 @@ class PositionLifecycleManager:
             conn.commit()
         return events
 
-    def can_open_position(self, symbol: str) -> Tuple[bool, str]:
+    def can_open_position(self, symbol: str, dynamic_max_slots: Optional[int] = None) -> Tuple[bool, str]:
         """
         Pre-flight idempotency & slot gate checked BEFORE submitting any order to Binance.
+        Supports dynamic slot throttling from Vibe-Trading Correlation Regime Detector (`3 -> 2 -> 1`).
         """
         if self.reconciliation_halted:
             return False, "FAIL_CLOSED_RECONCILIATION_HALTED"
-        max_slots = int(self.rules["max_concurrent_slots"])
+        base_max_slots = int(self.rules["max_concurrent_slots"])
+        eff_max_slots = (
+            min(base_max_slots, max(1, int(dynamic_max_slots)))
+            if dynamic_max_slots is not None
+            else base_max_slots
+        )
         with sqlite3.connect(self.db_path) as conn:
             already = conn.execute(
                 "SELECT COUNT(*) FROM active_positions WHERE symbol = ? AND status = 'OPEN'", (symbol,)
@@ -346,8 +352,10 @@ class PositionLifecycleManager:
             if already > 0:
                 return False, f"SKIP_ALREADY_OPEN ({symbol})"
             cur_open = conn.execute("SELECT COUNT(*) FROM active_positions WHERE status = 'OPEN'").fetchone()[0]
-            if cur_open >= max_slots:
-                return False, f"SKIP_MAX_SLOTS_FULL ({cur_open}/{max_slots})"
+            if cur_open >= eff_max_slots:
+                if eff_max_slots < base_max_slots:
+                    return False, f"SKIP_CORR_THROTTLED_SLOTS_FULL ({cur_open}/{eff_max_slots})"
+                return False, f"SKIP_MAX_SLOTS_FULL ({cur_open}/{eff_max_slots})"
         return True, "OK"
 
     def open_or_record_position(
@@ -359,8 +367,9 @@ class PositionLifecycleManager:
         plan: Dict[str, float],
         entry_price: float,
         execution_mode: str = "SHADOW_DRY_RUN",
+        dynamic_max_slots: Optional[int] = None,
     ) -> bool:
-        ok, _ = self.can_open_position(symbol)
+        ok, _ = self.can_open_position(symbol, dynamic_max_slots=dynamic_max_slots)
         if not ok:
             return False
         now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
