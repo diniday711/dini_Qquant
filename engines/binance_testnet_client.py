@@ -19,30 +19,30 @@ import requests
 
 TESTNET_BASE_URL = "https://testnet.binancefuture.com"
 
-# Pre-registered Binance USDT-M Futures stepSize / tickSize decimal precision table
-SYMBOL_PRECISION_MAP: Dict[str, Dict[str, int]] = {
-    "BTCUSDT": {"qty_dec": 3, "price_dec": 1},
-    "ETHUSDT": {"qty_dec": 3, "price_dec": 2},
-    "SOLUSDT": {"qty_dec": 1, "price_dec": 2},
-    "BNBUSDT": {"qty_dec": 2, "price_dec": 2},
-    "XRPUSDT": {"qty_dec": 1, "price_dec": 4},
-    "DOGEUSDT": {"qty_dec": 0, "price_dec": 5},
-    "ADAUSDT": {"qty_dec": 0, "price_dec": 4},
-    "AVAXUSDT": {"qty_dec": 1, "price_dec": 3},
-    "LINKUSDT": {"qty_dec": 2, "price_dec": 3},
-    "SUIUSDT": {"qty_dec": 1, "price_dec": 4},
-    "LTCUSDT": {"qty_dec": 3, "price_dec": 2},
+# Pre-registered Binance USDT-M Futures stepSize / tickSize / min_qty / min_notional table
+SYMBOL_PRECISION_MAP: Dict[str, Dict[str, float]] = {
+    "BTCUSDT": {"qty_dec": 3, "price_dec": 1, "min_qty": 0.001, "min_notional": 100.0},
+    "ETHUSDT": {"qty_dec": 3, "price_dec": 2, "min_qty": 0.001, "min_notional": 20.0},
+    "SOLUSDT": {"qty_dec": 1, "price_dec": 2, "min_qty": 0.1, "min_notional": 5.0},
+    "BNBUSDT": {"qty_dec": 2, "price_dec": 2, "min_qty": 0.01, "min_notional": 5.0},
+    "XRPUSDT": {"qty_dec": 1, "price_dec": 4, "min_qty": 0.1, "min_notional": 5.0},
+    "DOGEUSDT": {"qty_dec": 0, "price_dec": 5, "min_qty": 1.0, "min_notional": 5.0},
+    "ADAUSDT": {"qty_dec": 0, "price_dec": 4, "min_qty": 1.0, "min_notional": 5.0},
+    "AVAXUSDT": {"qty_dec": 1, "price_dec": 3, "min_qty": 0.1, "min_notional": 5.0},
+    "LINKUSDT": {"qty_dec": 2, "price_dec": 3, "min_qty": 0.01, "min_notional": 5.0},
+    "SUIUSDT": {"qty_dec": 1, "price_dec": 4, "min_qty": 0.1, "min_notional": 5.0},
+    "LTCUSDT": {"qty_dec": 3, "price_dec": 2, "min_qty": 0.001, "min_notional": 20.0},
 }
 
 
 def round_symbol_qty(symbol: str, qty: float) -> float:
-    dec = SYMBOL_PRECISION_MAP.get(symbol, {"qty_dec": 2})["qty_dec"]
+    dec = int(SYMBOL_PRECISION_MAP.get(symbol, {"qty_dec": 2})["qty_dec"])
     factor = 10 ** dec
     return math.floor(max(0.0, float(qty)) * factor) / factor
 
 
 def round_symbol_price(symbol: str, price: float) -> float:
-    dec = SYMBOL_PRECISION_MAP.get(symbol, {"price_dec": 4})["price_dec"]
+    dec = int(SYMBOL_PRECISION_MAP.get(symbol, {"price_dec": 4})["price_dec"])
     return round(float(price), dec)
 
 
@@ -75,9 +75,13 @@ class BinanceFuturesTestnetClient:
         self.api_key = api_key or os.environ.get("BINANCE_TESTNET_API_KEY", "")
         self.api_secret = api_secret or os.environ.get("BINANCE_TESTNET_API_SECRET", "")
         self.base_url = base_url.rstrip("/")
+        self._time_offset_ms: int = 0
         self.session = requests.Session()
         if self.api_key:
             self.session.headers.update({"X-MBX-APIKEY": self.api_key})
+
+    def _timestamp_ms(self) -> int:
+        return int(time.time() * 1000) + int(self._time_offset_ms)
 
     @property
     def is_live_testnet_configured(self) -> bool:
@@ -103,10 +107,13 @@ class BinanceFuturesTestnetClient:
             resp = self.session.get(f"{self.base_url}/fapi/v1/time", timeout=10)
             latency_ms = (time.perf_counter() - t0) * 1000.0
             if resp.status_code == 200:
+                srv_ms = int(resp.json().get("serverTime", int(time.time() * 1000)))
+                self._time_offset_ms = srv_ms - int(time.time() * 1000)
                 return {
                     "reachable": True,
                     "latency_ms": round(latency_ms, 2),
-                    "server_time": resp.json().get("serverTime"),
+                    "server_time": srv_ms,
+                    "time_offset_ms": self._time_offset_ms,
                 }
         except Exception as e:
             return {"reachable": False, "latency_ms": -1.0, "error": str(e)}
@@ -357,9 +364,70 @@ class BinanceFuturesTestnetClient:
                 "type": "STOP_MARKET",
                 "stopPrice": round_symbol_price(symbol, breakeven_price),
                 "closePosition": "true",
-                "timestamp": int(time.time() * 1000),
+                "timestamp": self._timestamp_ms(),
             }
             self.session.post(f"{self.base_url}/fapi/v1/order?{self._sign(sl_params)}", timeout=10)
             return "TESTNET_BREAKEVEN_STOP_SET"
         except Exception as e:
             return f"BREAKEVEN_ERR:{e}"
+
+    def cancel_all_open_orders(self, symbol: str, execute_on_testnet: bool = False) -> str:
+        if not (execute_on_testnet and self.is_live_testnet_configured):
+            return "SHADOW_CANCEL_ALL_OPEN_ORDERS_OK"
+        try:
+            params = {"symbol": symbol, "timestamp": self._timestamp_ms(), "recvWindow": 5000}
+            self.session.delete(
+                f"{self.base_url}/fapi/v1/allOpenOrders?{self._sign(params)}", timeout=10
+            )
+            return "TESTNET_CANCEL_ALL_OPEN_ORDERS_OK"
+        except Exception as e:
+            return f"CANCEL_ORDERS_ERR:{e}"
+
+    def close_position_market(
+        self,
+        symbol: str,
+        side_int: int,
+        quantity: float,
+        execute_on_testnet: bool = False,
+    ) -> Dict[str, Any]:
+        """
+        Safely exit an open position at market with `reduceOnly=true` first (preventing any accidental
+        reverse position if STOP_MARKET raced), then immediately cancel all remaining open bracket orders.
+        """
+        qty_rounded = round_symbol_qty(symbol, quantity)
+        exit_side_str = "SELL" if side_int == 1 else "BUY"
+        if not (execute_on_testnet and self.is_live_testnet_configured):
+            return {
+                "status": "SHADOW_MARKET_CLOSE_REDUCE_ONLY_OK",
+                "symbol": symbol,
+                "quantity": qty_rounded,
+                "orders_cancelled": True,
+            }
+        try:
+            if qty_rounded > 0:
+                params = {
+                    "symbol": symbol,
+                    "side": exit_side_str,
+                    "type": "MARKET",
+                    "quantity": qty_rounded,
+                    "reduceOnly": "true",
+                    "timestamp": self._timestamp_ms(),
+                }
+                self.session.post(
+                    f"{self.base_url}/fapi/v1/order?{self._sign(params)}", timeout=10
+                )
+            self.cancel_all_open_orders(symbol, execute_on_testnet=True)
+            return {
+                "status": "TESTNET_MARKET_CLOSE_REDUCE_ONLY_OK",
+                "symbol": symbol,
+                "quantity": qty_rounded,
+                "orders_cancelled": True,
+            }
+        except Exception as e:
+            self.cancel_all_open_orders(symbol, execute_on_testnet=True)
+            return {
+                "status": f"MARKET_CLOSE_ERR:{e}",
+                "symbol": symbol,
+                "quantity": qty_rounded,
+                "orders_cancelled": True,
+            }

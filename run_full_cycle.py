@@ -207,6 +207,7 @@ def build_autonomous_debate_and_regime_scan(
             entry_price=close_px,
             atr_val=atr_val,
             side_int=cand_side,
+            symbol=sym,
         )
         stop_dist = slot_plan["stop_dist_pct"]
         stop_px = slot_plan["stop_price"]
@@ -837,23 +838,32 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
     )
 
     pos_mgr = PositionLifecycleManager("data/crumb_memory.db")
+    hwm_status = pos_mgr.update_and_check_equity_hwm(float(bal_res["available_balance_usdt"]))
+    print(
+        f"  -> [Seed Tier & HWM Floor] {hwm_status['tier_name']} | "
+        f"Equity=${hwm_status['current_equity_usdt']:,.2f} | Peak=${hwm_status['peak_equity_usdt']:,.2f} | "
+        f"85% Floor=${hwm_status['locked_floor_usdt']:,.2f} | FloorLocked={hwm_status['account_floor_locked']}"
+    )
     latest_prices_map = {c["symbol"]: float(c["price"]) for c in regime_scan["coin_regimes"]}
     coin_regimes_map = {c["symbol"]: str(c["trend_regime"]) for c in regime_scan["coin_regimes"]}
+    global_reg_code = regime_scan.get("world_monitor", {}).get("global_regime_code", "SELECTIVE_ROTATION")
     lifecycle_events = pos_mgr.sync_and_manage_positions(
         latest_prices=latest_prices_map,
         coin_regimes_map=coin_regimes_map,
         testnet_client=testnet_client,
         execute_on_testnet=execute_on_testnet,
+        global_regime_code=global_reg_code,
     )
     for ev in lifecycle_events:
         print(f"  -> [Position Lifecycle] {ev}")
 
     latest_bar_tag = datetime.now(timezone.utc).strftime("%Y%m%d%H")
-    dyn_max_slots = (
+    corr_max_slots = (
         regime_scan.get("vibe_diagnostics", {})
         .get("correlation", {})
         .get("recommended_max_slots", CONFIG.max_concurrent_positions)
     )
+    dyn_max_slots = min(int(hwm_status["tier_max_slots"]), int(corr_max_slots))
     for sig in regime_scan["actionable_signals"][:3]:
         if sig["eggbot_approved"]:
             can_open, gate_reason = pos_mgr.can_open_position(
@@ -929,6 +939,19 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
     )
     print("  -> Dashboard ready at: C:\\Users\\user\\Desktop\\qunat\\reports\\qstack_dashboard.html")
     print("  -> Discord Briefing ready at: C:\\Users\\user\\Desktop\\qunat\\reports\\latest_discord_briefing.md")
+
+    webhook_url = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+    if webhook_url and webhook_url.startswith("http"):
+        try:
+            import requests as _req
+
+            with open("reports/latest_discord_briefing.md", "r", encoding="utf-8") as bf:
+                msg_body = bf.read()[:1900]
+            _req.post(webhook_url, json={"content": msg_body}, timeout=8)
+            print("  -> Sent live briefing push to DISCORD_WEBHOOK_URL.")
+        except Exception as we:
+            print(f"  -> Discord webhook warning: {we}")
+
     return regime_scan
 
 

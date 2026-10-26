@@ -375,6 +375,114 @@ class TestW2AndLeakageGates(unittest.TestCase):
         vit_b = compute_alpha_vitality_diagnostics(mut_univ, btc_df, lookback_bars=60)
         self.assertEqual(vit_a["families"], vit_b["families"])
 
+    def test_10_v34_operational_lifecycle_small_seed_and_hwm(self):
+        """
+        Verify Q-Stack v3.4 Operational Completeness:
+        1) Small-Seed ($360 / 500k KRW) MICRO_SEED_TIER (2 slots + BTC single-leg TP fallback).
+        2) High-Water Mark (85% Ratchet Floor) locking when equity grows to $1,000 and drops below $850.
+        3) Full Exit Lifecycle: TP1 (+1.8%) -> Peak (+3.5%) -> Trailing Callback (-1.0%p) exit & 48h Time-Stop exit.
+        """
+        import tempfile
+        import os
+        from datetime import datetime, timezone
+        from engines.position_manager import PositionLifecycleManager
+
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tf:
+            tmp_db = tf.name
+        try:
+            pm = PositionLifecycleManager(tmp_db)
+
+            # 1) Small-seed $360 check
+            hwm_360 = pm.update_and_check_equity_hwm(360.0, initial_equity_override=360.0)
+            self.assertTrue(hwm_360["ok"])
+            self.assertEqual(hwm_360["tier_max_slots"], 2)
+            self.assertAlmostEqual(hwm_360["locked_floor_usdt"], 306.0)
+
+            btc_plan_360 = pm.compute_wonyotti_slot_order_plan(360.0, 90000.0, 1200.0, 1, symbol="BTCUSDT")
+            self.assertTrue(btc_plan_360["single_leg_tp_mode"])
+            self.assertEqual(btc_plan_360["partial_tp_qty"], 0.0)
+
+            # 2) Equity grows to $1,000 -> 85% floor ratchets to $850.0
+            hwm_1000 = pm.update_and_check_equity_hwm(1000.0)
+            self.assertTrue(hwm_1000["ok"])
+            self.assertEqual(hwm_1000["tier_max_slots"], 3)
+            self.assertAlmostEqual(hwm_1000["locked_floor_usdt"], 850.0)
+
+            # Drop to $845 -> trips HWM 85% floor lock!
+            hwm_drop = pm.update_and_check_equity_hwm(845.0)
+            self.assertFalse(hwm_drop["ok"])
+            self.assertTrue(pm.account_floor_locked)
+            can_open_locked, reason_locked = pm.can_open_position("SOLUSDT")
+            self.assertFalse(can_open_locked)
+            self.assertIn("ACCOUNT_FLOOR_LOCKED_HWM_85PCT", reason_locked)
+
+            # Restore equity to $1,000 for lifecycle test
+            pm.update_and_check_equity_hwm(1000.0)
+            plan = pm.compute_wonyotti_slot_order_plan(1000.0, 100.0, 1.0, 1, symbol="SOLUSDT")
+            self.assertTrue(
+                pm.open_or_record_position(
+                    "SOLUSDT",
+                    "LONG",
+                    1,
+                    "WONYOTTI_VOLUME_CLUSTER_BREAKOUT",
+                    plan,
+                    100.0,
+                    opened_at_override="2026-10-20 00:00:00 UTC",
+                )
+            )
+
+            # Step A: Hit TP1 at $102.0 (+2.0% >= +1.8%)
+            ev_tp1 = pm.sync_and_manage_positions(
+                {"SOLUSDT": 102.0},
+                {"SOLUSDT": "TRENDING_UP"},
+                now_utc_override=datetime(2026, 10, 20, 2, 0, tzinfo=timezone.utc),
+            )
+            self.assertTrue(any("1차 목표 도달" in e for e in ev_tp1))
+            active_after_tp1 = pm.get_active_positions()
+            self.assertEqual(len(active_after_tp1), 1)
+            self.assertEqual(active_after_tp1[0]["tp1_hit"], 1)
+            self.assertAlmostEqual(active_after_tp1[0]["stop_price"], 100.0)
+
+            # Step B: Advance to $103.5 (+3.5% peak), then pullback to $102.2 (-1.3%p pullback >= 1.0%p callback) -> Trailing Exit!
+            pm.sync_and_manage_positions(
+                {"SOLUSDT": 103.5},
+                {"SOLUSDT": "TRENDING_UP"},
+                now_utc_override=datetime(2026, 10, 20, 3, 0, tzinfo=timezone.utc),
+            )
+            ev_trail = pm.sync_and_manage_positions(
+                {"SOLUSDT": 102.2},
+                {"SOLUSDT": "TRENDING_UP"},
+                now_utc_override=datetime(2026, 10, 20, 4, 0, tzinfo=timezone.utc),
+            )
+            self.assertTrue(any("TRAILING_PROFIT_LOCK_EXIT" in e for e in ev_trail))
+            self.assertEqual(len(pm.get_active_positions()), 0)
+
+            # Step C: Stagnant position held for 50 hours (>= 48h) without hitting TP1 -> Time-Stop Exit!
+            self.assertTrue(
+                pm.open_or_record_position(
+                    "XRPUSDT",
+                    "LONG",
+                    1,
+                    "WONYOTTI_VOLUME_CLUSTER_BREAKOUT",
+                    plan,
+                    100.0,
+                    opened_at_override="2026-10-20 00:00:00 UTC",
+                )
+            )
+            ev_time = pm.sync_and_manage_positions(
+                {"XRPUSDT": 100.2},
+                {"XRPUSDT": "RANGING"},
+                now_utc_override=datetime(2026, 10, 22, 2, 0, tzinfo=timezone.utc),
+            )
+            self.assertTrue(any("TIME_STOP_48H_EXIT" in e for e in ev_time))
+            self.assertEqual(len(pm.get_active_positions()), 0)
+        finally:
+            try:
+                if os.path.exists(tmp_db):
+                    os.remove(tmp_db)
+            except PermissionError:
+                pass
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

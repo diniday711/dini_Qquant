@@ -1,17 +1,19 @@
 """
-Hermes Agent & Multi-Worker CLI Bridge (`qstack_cli.py`)
-Allows Oracle Server Hermes Agents and Discord Worker Bots (`codex`, `claude`, `opgo`)
-to control Q-Stack, retrieve structured role prompts, read Discord briefings, and trigger cycles.
+Hermes Agent & Operator Emergency Remote Control CLI (`qstack_cli.py`)
+Allows the User, Oracle Server Hermes Agents, and Discord Worker Bots (`codex`, `claude`, `opgo`)
+to control Q-Stack, inspect status, pause/resume new entries, emergency panic-close all positions,
+retrieve structured role prompts, read Discord briefings, and trigger cycles.
 
-Usage Examples (for Hermes Agent / Discord Bot):
-  python qstack_cli.py cycle                # Run 1 full autonomous cycle & output Discord briefing
-  python qstack_cli.py briefing             # Print latest Discord-ready Markdown briefing
-  python qstack_cli.py worker-prompt --role critic   # Generate prompt for Critic Worker (Dr. Eggbot)
-  python qstack_cli.py worker-prompt --role research # Generate prompt for Research Worker (Hatcha)
-  python qstack_cli.py worker-prompt --role judge    # Generate prompt for Final Judge Worker
+Usage Examples:
+  python qstack_cli.py status                      # Print current account, pause state, HWM floor, and open slots
+  python qstack_cli.py pause                       # Immediately pause all new trade entries
+  python qstack_cli.py resume                      # Resume autonomous trade entries
+  python qstack_cli.py panic-close --live-testnet  # Emergency market-close all open positions & cancel open orders
+  python qstack_cli.py cycle                       # Run 1 full autonomous cycle & output Discord briefing
+  python qstack_cli.py briefing                    # Print latest Discord-ready Markdown briefing
+  python qstack_cli.py worker-prompt --role critic # Generate prompt for Critic Worker (Dr. Eggbot)
 """
 import argparse
-import json
 from pathlib import Path
 import subprocess
 import sys
@@ -61,6 +63,56 @@ def cmd_briefing() -> int:
     return 0
 
 
+def cmd_status() -> int:
+    from config import CONFIG
+    from engines.binance_testnet_client import BinanceFuturesTestnetClient
+    from engines.position_manager import PositionLifecycleManager, load_user_trading_rules
+
+    rules = load_user_trading_rules()
+    client = BinanceFuturesTestnetClient()
+    bal = client.get_usdt_balance(CONFIG.initial_capital)
+    pm = PositionLifecycleManager(str(BASE_DIR / "data" / "crumb_memory.db"))
+    hwm = pm.update_and_check_equity_hwm(float(bal["available_balance_usdt"]))
+    active = pm.get_active_positions()
+
+    print("=== [Q-Stack v3.4 실시간 운영 상태 점검] ===")
+    print(f"• 계좌 모드: {bal['mode']}")
+    print(f"• 가용 잔고: ${bal['available_balance_usdt']:,.2f} USDT | 시드 구간: {hwm['tier_name']} (최대 {hwm['tier_max_slots']}슬롯)")
+    print(f"• 최고 자산(HWM): ${hwm['peak_equity_usdt']:,.2f} USDT | 85% 보호 바닥선: ${hwm['locked_floor_usdt']:,.2f} USDT (잠금 여부: {hwm['account_floor_locked']})")
+    print(f"• 매매 일시정지(Pause) 상태: {rules.get('trading_paused', False)} | 제외 코인: {rules.get('excluded_symbols', [])}")
+    print(f"• 현재 보유 포지션 수: {len(active)}개")
+    for p in active:
+        print(
+            f"  - [{p['symbol']}] {p['side']} | 진입가 ${p['entry_price']:,.4f} | 손절가 ${p['stop_price']:,.4f} | "
+            f"1차익절 ${p['tp1_price']:,.4f} (TP1달성={p['tp1_hit']}) | 미실현손익 ${p['unrealized_pnl_usd']:+,.2f}"
+        )
+    return 0
+
+
+def cmd_pause(paused: bool) -> int:
+    from engines.position_manager import set_operator_Pause_state
+
+    rules = set_operator_Pause_state(paused)
+    state_kr = "⏸️ [일시정지(PAUSED) 활성화 - 모든 신규 진입 차단]" if paused else "▶️ [정상 가동(RESUMED) - 자율 매매 재개]"
+    print(f"{state_kr} (user_trading_rules.json trading_paused={rules['trading_paused']})")
+    return 0
+
+
+def cmd_panic_close(live_testnet: bool) -> int:
+    from engines.binance_testnet_client import BinanceFuturesTestnetClient
+    from engines.position_manager import PositionLifecycleManager
+
+    client = BinanceFuturesTestnetClient()
+    pm = PositionLifecycleManager(str(BASE_DIR / "data" / "crumb_memory.db"))
+    events = pm.panic_close_all_positions(testnet_client=client, execute_on_testnet=live_testnet)
+    print("🚨 [비상 전량 청산 & 일시정지(PANIC CLOSE) 실행 완료]")
+    if not events:
+        print("  -> 현재 열려 있는 포지션이 없으며, 신규 진입 일시정지(trading_paused=True) 잠금이 설정되었습니다.")
+    for ev in events:
+        print(f"  -> {ev}")
+    return 0
+
+
 def cmd_worker_prompt(role: str) -> int:
     sys_prompt = WORKER_SYSTEM_PROMPTS.get(role)
     if not sys_prompt:
@@ -78,8 +130,14 @@ def cmd_worker_prompt(role: str) -> int:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Q-Stack Hermes & Discord Worker CLI")
+    parser = argparse.ArgumentParser(description="Q-Stack Hermes & Operator Remote Control CLI")
     sub = parser.add_subparsers(dest="command", required=True)
+
+    sub.add_parser("status", help="Inspect current balance, HWM floor, pause state, and active positions")
+    sub.add_parser("pause", help="Immediately pause all new trade entries")
+    sub.add_parser("resume", help="Resume autonomous trade entries")
+    pc = sub.add_parser("panic-close", help="Emergency market-close all open positions and pause trading")
+    pc.add_argument("--live-testnet", action="store_true", help="Send live market close & cancel orders to Binance Testnet")
 
     sub.add_parser("cycle", help="Run 1 full autonomous cycle and print Discord briefing")
     sub.add_parser("briefing", help="Print the latest Discord briefing markdown")
@@ -88,7 +146,15 @@ def main() -> None:
     wp.add_argument("--role", choices=["research", "critic", "judge"], required=True)
 
     args = parser.parse_args()
-    if args.command == "cycle":
+    if args.command == "status":
+        sys.exit(cmd_status())
+    elif args.command == "pause":
+        sys.exit(cmd_pause(True))
+    elif args.command == "resume":
+        sys.exit(cmd_pause(False))
+    elif args.command == "panic-close":
+        sys.exit(cmd_panic_close(args.live_testnet))
+    elif args.command == "cycle":
         sys.exit(cmd_cycle())
     elif args.command == "briefing":
         sys.exit(cmd_briefing())
