@@ -251,6 +251,53 @@ class TestW2AndLeakageGates(unittest.TestCase):
         self.assertTrue(pm.reconciliation_halted)
         self.assertIn("UNPROTECTED_POSITION_NO_STOP: ETHUSDT", rec["errors"])
 
+    def test_8_poteto_mode_daemon_idempotency_and_shadow_cleanup(self):
+        """
+        Verify /poteto-mode audit fixes:
+        1) Pre-flight `can_open_position` prevents duplicate exchange order submission when symbol is already open or reconciliation is halted.
+        2) Stale SHADOW_DRY_RUN rows in SQLite are automatically purged when reconciling against a clean live Testnet account (`live=True`, `positions=[]`).
+        """
+        import tempfile
+        import os
+        from engines.position_manager import PositionLifecycleManager
+
+        with tempfile.NamedTemporaryFile(suffix=".db", delete=False) as tf:
+            tmp_db = tf.name
+        try:
+            pm = PositionLifecycleManager(tmp_db)
+            plan = pm.compute_wonyotti_slot_order_plan(1000.0, 100.0, 2.0, 1)
+
+            # 1) Open a SHADOW_DRY_RUN position for LTCUSDT
+            ok_open, reason = pm.can_open_position("LTCUSDT")
+            self.assertTrue(ok_open, reason)
+            recorded = pm.open_or_record_position(
+                symbol="LTCUSDT",
+                side="LONG",
+                side_int=1,
+                sub_strategy="WONYOTTI_VOLUME_CLUSTER_BREAKOUT",
+                plan=plan,
+                entry_price=100.0,
+                execution_mode="SHADOW_DRY_RUN",
+            )
+            self.assertTrue(recorded)
+
+            # 2) Second cycle for same symbol must be blocked by can_open_position BEFORE calling exchange
+            ok_dup, dup_reason = pm.can_open_position("LTCUSDT")
+            self.assertFalse(ok_dup)
+            self.assertIn("SKIP_ALREADY_OPEN", dup_reason)
+
+            # 3) Switching to live Testnet (`live=True`, 0 positions on exchange) purges SHADOW_DRY_RUN rows and reconciles cleanly
+            clean_live_state = {"live": True, "positions": [], "open_orders": [], "error": None}
+            rec_clean = pm.reconcile_exchange_vs_db(clean_live_state)
+            self.assertTrue(rec_clean["ok"], f"Expected clean live boot after purging shadow rows, got {rec_clean}")
+            self.assertEqual(len(pm.get_active_positions()), 0)
+        finally:
+            try:
+                if os.path.exists(tmp_db):
+                    os.remove(tmp_db)
+            except PermissionError:
+                pass
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)

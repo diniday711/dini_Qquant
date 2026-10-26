@@ -762,8 +762,8 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
     print("[Q-Stack Cycle] 3/6 Fetching 10-Coin Universe + BTC Data & Running 3-Axis Regime Scan...")
     print("=" * 76)
     fetcher = BinanceDataFetcher(CONFIG, data_dir="data/raw")
-    btc_1h = fetcher.fetch_klines("BTCUSDT", "1h", days=360)
-    univ_1h = {sym: fetcher.fetch_klines(sym, "1h", days=360) for sym in CONFIG.target_universe}
+    btc_1h = fetcher.fetch_klines("BTCUSDT", "1h", days=360, refresh_tail=True)
+    univ_1h = {sym: fetcher.fetch_klines(sym, "1h", days=360, refresh_tail=True) for sym in CONFIG.target_universe}
     fund_360 = {sym: fetcher.fetch_funding_rates(sym, days=360) for sym in CONFIG.target_universe}
 
     eggbot = DrEggbotAuditor()
@@ -782,7 +782,13 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
     print("\n" + "=" * 76)
     print("[Q-Stack Cycle] 4/6 Running Strategy Lab (Comparing Single Strategies vs Regime Switcher)...")
     print("=" * 76)
-    strat_comp = run_regime_switching_study(univ_1h, btc_1h, fund_360)
+    strat_comp_cache = "reports/strategy_comparison.json"
+    if os.path.exists(strat_comp_cache) and (time.time() - os.path.getmtime(strat_comp_cache)) < 21600:
+        with open(strat_comp_cache, "r", encoding="utf-8") as f:
+            strat_comp = json.load(f)
+        print("  -> Loaded cached 360d Strategy Comparison (< 6h old) for fast 15m daemon cycle.")
+    else:
+        strat_comp = run_regime_switching_study(univ_1h, btc_1h, fund_360)
 
     print("\n" + "=" * 76)
     print("[Q-Stack Cycle] 5/6 Recording Autonomous Debate Decisions & Testnet Orders to Crumb DB...")
@@ -812,28 +818,38 @@ def run_one_complete_cycle(execute_on_testnet: bool = False) -> Dict[str, Any]:
     for ev in lifecycle_events:
         print(f"  -> [Position Lifecycle] {ev}")
 
+    latest_bar_tag = datetime.now(timezone.utc).strftime("%Y%m%d%H")
     for sig in regime_scan["actionable_signals"][:3]:
         if sig["eggbot_approved"]:
-            ord_res = testnet_client.place_testnet_bracket_order(
-                symbol=sig["symbol"],
-                side=sig["side_int"],
-                quantity=sig["quantity"],
-                stop_price=sig["stop_price"],
-                tp1_price=sig["tp1_price"],
-                partial_tp_ratio=0.50,
-                leverage=int(max(1, round(sig["leverage"]))),
-                execute_on_testnet=execute_on_testnet,
-            )
-            order_status = ord_res["status"]
-            order_id = ord_res["order_id"]
-            pos_mgr.open_or_record_position(
-                symbol=sig["symbol"],
-                side=sig["side"],
-                side_int=sig["side_int"],
-                sub_strategy=sig["sub_strategy"],
-                plan=sig["slot_plan"],
-                entry_price=sig["entry_price"],
-            )
+            can_open, gate_reason = pos_mgr.can_open_position(sig["symbol"])
+            if not can_open:
+                order_status = gate_reason
+                order_id = "NONE"
+            else:
+                det_trade_id = f"{sig['symbol']}_{sig['side']}_{latest_bar_tag}"
+                ord_res = testnet_client.place_testnet_bracket_order(
+                    symbol=sig["symbol"],
+                    side=sig["side_int"],
+                    quantity=sig["quantity"],
+                    stop_price=sig["stop_price"],
+                    tp1_price=sig["tp1_price"],
+                    partial_tp_ratio=0.50,
+                    leverage=int(max(1, round(sig["leverage"]))),
+                    trade_id=det_trade_id,
+                    execute_on_testnet=execute_on_testnet,
+                )
+                order_status = ord_res["status"]
+                order_id = ord_res["order_id"]
+                if "FAILED" not in order_status:
+                    pos_mgr.open_or_record_position(
+                        symbol=sig["symbol"],
+                        side=sig["side"],
+                        side_int=sig["side_int"],
+                        sub_strategy=sig["sub_strategy"],
+                        plan=sig["slot_plan"],
+                        entry_price=sig["entry_price"],
+                        execution_mode=bal_res["mode"],
+                    )
         else:
             order_status = "WAIT_FOR_TRIGGER"
             order_id = "NONE"

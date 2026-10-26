@@ -14,7 +14,7 @@ import json
 from pathlib import Path
 import sqlite3
 from datetime import datetime, timezone
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Tuple
 from config import CONFIG
 
 RULES_PATH = Path(__file__).parent.parent / "user_trading_rules.json"
@@ -91,10 +91,16 @@ class PositionLifecycleManager:
                     tp1_hit INTEGER NOT NULL DEFAULT 0,
                     realized_pnl_usd REAL NOT NULL DEFAULT 0.0,
                     unrealized_pnl_usd REAL NOT NULL DEFAULT 0.0,
-                    status TEXT NOT NULL DEFAULT 'OPEN'
+                    status TEXT NOT NULL DEFAULT 'OPEN',
+                    execution_mode TEXT NOT NULL DEFAULT 'SHADOW_DRY_RUN'
                 )
                 """
             )
+            cols = [r[1] for r in conn.execute("PRAGMA table_info(active_positions)").fetchall()]
+            if "execution_mode" not in cols:
+                conn.execute(
+                    "ALTER TABLE active_positions ADD COLUMN execution_mode TEXT NOT NULL DEFAULT 'SHADOW_DRY_RUN'"
+                )
             conn.execute(
                 """
                 CREATE TABLE IF NOT EXISTS closed_positions_history (
@@ -132,6 +138,11 @@ class PositionLifecycleManager:
 
         if not exchange_state.get("live", False):
             return {"ok": True, "mode": "SHADOW_CACHE_OK", "errors": []}
+
+        # Purge any local SHADOW_DRY_RUN rows before reconciling against a live exchange
+        with sqlite3.connect(self.db_path) as conn:
+            conn.execute("DELETE FROM active_positions WHERE execution_mode = 'SHADOW_DRY_RUN'")
+            conn.commit()
 
         db_positions = {p["symbol"]: p for p in self.get_active_positions()}
         ex_positions = {
@@ -321,6 +332,24 @@ class PositionLifecycleManager:
             conn.commit()
         return events
 
+    def can_open_position(self, symbol: str) -> Tuple[bool, str]:
+        """
+        Pre-flight idempotency & slot gate checked BEFORE submitting any order to Binance.
+        """
+        if self.reconciliation_halted:
+            return False, "FAIL_CLOSED_RECONCILIATION_HALTED"
+        max_slots = int(self.rules["max_concurrent_slots"])
+        with sqlite3.connect(self.db_path) as conn:
+            already = conn.execute(
+                "SELECT COUNT(*) FROM active_positions WHERE symbol = ? AND status = 'OPEN'", (symbol,)
+            ).fetchone()[0]
+            if already > 0:
+                return False, f"SKIP_ALREADY_OPEN ({symbol})"
+            cur_open = conn.execute("SELECT COUNT(*) FROM active_positions WHERE status = 'OPEN'").fetchone()[0]
+            if cur_open >= max_slots:
+                return False, f"SKIP_MAX_SLOTS_FULL ({cur_open}/{max_slots})"
+        return True, "OK"
+
     def open_or_record_position(
         self,
         symbol: str,
@@ -329,27 +358,21 @@ class PositionLifecycleManager:
         sub_strategy: str,
         plan: Dict[str, float],
         entry_price: float,
+        execution_mode: str = "SHADOW_DRY_RUN",
     ) -> bool:
-        if self.reconciliation_halted:
+        ok, _ = self.can_open_position(symbol)
+        if not ok:
             return False
         now_iso = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-        max_slots = int(self.rules["max_concurrent_slots"])
         with sqlite3.connect(self.db_path) as conn:
-            cur_open = conn.execute("SELECT COUNT(*) FROM active_positions WHERE status = 'OPEN'").fetchone()[0]
-            already = conn.execute(
-                "SELECT COUNT(*) FROM active_positions WHERE symbol = ? AND status = 'OPEN'", (symbol,)
-            ).fetchone()[0]
-            if already > 0 or cur_open >= max_slots:
-                return False
-
             conn.execute(
                 """
                 INSERT INTO active_positions (
                     opened_at, updated_at, symbol, side, side_int, sub_strategy,
                     margin_mode, slot_margin_usd, notional_usd, leverage,
                     initial_qty, remaining_qty, entry_price, stop_price, tp1_price,
-                    tp1_hit, realized_pnl_usd, unrealized_pnl_usd, status
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0.0, 0.0, 'OPEN')
+                    tp1_hit, realized_pnl_usd, unrealized_pnl_usd, status, execution_mode
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0.0, 0.0, 'OPEN', ?)
                 """,
                 (
                     now_iso,
@@ -367,6 +390,7 @@ class PositionLifecycleManager:
                     entry_price,
                     plan["stop_price"],
                     plan["tp1_price"],
+                    execution_mode,
                 ),
             )
             conn.commit()
